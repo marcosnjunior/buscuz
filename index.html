@@ -12,8 +12,8 @@
         <!-- Cabeçalho -->
         <header>
             <h1><i class="fas fa-route"></i> Buscuz</h1>
-            <div>
-                <button id="btnConfig" class="icon-btn"><i class="fas fa-cog"></i></button>
+            <div class="user-info" id="userInfo">
+                <!-- Será preenchido pelo JavaScript -->
             </div>
         </header>
 
@@ -21,6 +21,7 @@
         <main id="mainScreen">
             <div class="toolbar">
                 <button id="btnNovaViagem" class="primary-btn"><i class="fas fa-plus"></i> Nova Viagem</button>
+                <button id="btnSync" class="secondary-btn"><i class="fas fa-sync"></i> Sincronizar</button>
             </div>
             
             <!-- Filtros -->
@@ -86,6 +87,10 @@
         </div>
     </div>
 
+    <!-- Carregar scripts na ordem correta -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
+    <script src="auth.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
