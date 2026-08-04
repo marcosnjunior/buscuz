@@ -6,6 +6,74 @@
     <title>Cadastro - Buscuz</title>
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        /* Estilos adicionais para a página de cadastro */
+        .password-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .password-input-wrapper input {
+            flex: 1;
+            padding-right: 45px;
+        }
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #7f8c8d;
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 5px;
+        }
+        .toggle-password:hover {
+            color: #2c3e50;
+        }
+        .password-requirements {
+            margin-top: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .password-requirements small {
+            font-size: 0.75rem;
+            transition: all 0.3s;
+        }
+        .req-valid {
+            color: #27ae60;
+        }
+        .req-valid i {
+            color: #27ae60;
+        }
+        .req-invalid {
+            color: #e74c3c;
+        }
+        .req-invalid i {
+            color: #e74c3c;
+        }
+        .auth-success {
+            background: #e8f5e9;
+            color: #27ae60;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border-left: 4px solid #27ae60;
+            display: none;
+        }
+        .auth-error {
+            background: #fde8e8;
+            color: #e74c3c;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border-left: 4px solid #e74c3c;
+            display: none;
+        }
+        .auth-success i, .auth-error i {
+            margin-right: 8px;
+        }
+    </style>
 </head>
 <body>
     <div id="app">
@@ -17,32 +85,73 @@
                     <p>Comece a planejar suas viagens</p>
                 </div>
 
-                <form id="signupForm" onsubmit="handleSignup(event)">
-                    <div id="signupError" class="auth-error" style="display:none;"></div>
+                <!-- FORMULÁRIO CORRIGIDO -->
+                <form id="signupForm">
+                    <div id="signupError" class="auth-error"></div>
+                    <div id="signupSuccess" class="auth-success">
+                        <i class="fas fa-check-circle"></i> 
+                        Cadastro realizado com sucesso! 
+                        <br><br>
+                        <small>Verifique seu e-mail para confirmar sua conta.</small>
+                        <br>
+                        <small>Redirecionando para o login...</small>
+                    </div>
                     
                     <div class="form-group">
-                        <label><i class="fas fa-user"></i> Nome</label>
+                        <label><i class="fas fa-user"></i> Nome Completo *</label>
                         <input type="text" id="name" required placeholder="Seu nome completo" />
                     </div>
 
                     <div class="form-group">
-                        <label><i class="fas fa-envelope"></i> E-mail</label>
+                        <label><i class="fas fa-envelope"></i> E-mail *</label>
                         <input type="email" id="email" required placeholder="seu@email.com" />
+                        <small style="color: #7f8c8d; font-size: 0.8rem;">
+                            <i class="fas fa-info-circle"></i> Você receberá um e-mail de confirmação
+                        </small>
                     </div>
 
                     <div class="form-group">
-                        <label><i class="fas fa-lock"></i> Senha</label>
-                        <input type="password" id="password" required placeholder="Mínimo 6 caracteres" />
+                        <label><i class="fas fa-lock"></i> Senha *</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" id="password" required placeholder="Mínimo 6 caracteres" />
+                            <button type="button" class="toggle-password" onclick="togglePassword('password')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="password-requirements">
+                            <small id="req-length" class="req-invalid">
+                                <i class="fas fa-circle"></i> Mínimo 6 caracteres
+                            </small>
+                            <small id="req-letter" class="req-invalid">
+                                <i class="fas fa-circle"></i> Pelo menos uma letra
+                            </small>
+                            <small id="req-number" class="req-invalid">
+                                <i class="fas fa-circle"></i> Pelo menos um número
+                            </small>
+                        </div>
                     </div>
 
                     <div class="form-group">
-                        <label><i class="fas fa-check-circle"></i> Confirmar Senha</label>
-                        <input type="password" id="confirmPassword" required placeholder="Digite a senha novamente" />
+                        <label><i class="fas fa-check-circle"></i> Confirmar Senha *</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" id="confirmPassword" required placeholder="Digite a senha novamente" />
+                            <button type="button" class="toggle-password" onclick="togglePassword('confirmPassword')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div id="passwordMatch" style="font-size:0.8rem; margin-top:4px;"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                            <input type="checkbox" id="termsCheck" required style="width:auto; cursor:pointer;" />
+                            <span style="font-weight:normal; font-size:0.9rem;">Li e aceito os <a href="#" onclick="showTerms(); return false;">Termos de Uso</a> e a <a href="#" onclick="showPrivacy(); return false;">Política de Privacidade</a></span>
+                        </label>
                     </div>
 
                     <button type="submit" id="signupButton" class="primary-btn full-width">
                         <span id="signupLoading" style="display:none;"><i class="fas fa-spinner fa-spin"></i> </span>
-                        Cadastrar
+                        Criar Conta
                     </button>
 
                     <div class="auth-links">
@@ -53,9 +162,273 @@
         </div>
     </div>
 
-    <!-- Carregar scripts na ordem correta -->
+    <!-- Modais -->
+    <div id="termsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="fecharModal('termsModal')">&times;</span>
+            <h2><i class="fas fa-file-contract"></i> Termos de Uso</h2>
+            <div style="max-height:400px; overflow-y:auto; padding:10px 0;">
+                <h3>1. Aceitação dos Termos</h3>
+                <p>Ao criar uma conta no Buscuz, você concorda com estes termos de uso.</p>
+                
+                <h3>2. Responsabilidades do Usuário</h3>
+                <p>Você é responsável por manter suas credenciais seguras e por todas as atividades realizadas em sua conta.</p>
+                
+                <h3>3. Privacidade</h3>
+                <p>Seus dados pessoais serão protegidos conforme nossa Política de Privacidade.</p>
+                
+                <h3>4. Uso do Serviço</h3>
+                <p>O Buscuz é uma ferramenta para planejamento de viagens. O usuário se compromete a usar o serviço de forma ética e legal.</p>
+                
+                <h3>5. Alterações</h3>
+                <p>Podemos atualizar estes termos a qualquer momento. O usuário será notificado sobre mudanças significativas.</p>
+            </div>
+            <button onclick="fecharModal('termsModal')" class="primary-btn" style="width:100%; margin-top:10px;">
+                <i class="fas fa-check"></i> Li e Concordo
+            </button>
+        </div>
+    </div>
+
+    <div id="privacyModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="fecharModal('privacyModal')">&times;</span>
+            <h2><i class="fas fa-shield-alt"></i> Política de Privacidade</h2>
+            <div style="max-height:400px; overflow-y:auto; padding:10px 0;">
+                <h3>1. Dados Coletados</h3>
+                <p>Coletamos: nome, e-mail, informações de viagem, configurações do sistema.</p>
+                
+                <h3>2. Uso dos Dados</h3>
+                <p>Utilizamos seus dados para:</p>
+                <ul style="padding-left:20px; margin:10px 0;">
+                    <li>Gerenciar sua conta e viagens</li>
+                    <li>Personalizar sua experiência</li>
+                    <li>Enviar notificações importantes</li>
+                </ul>
+                
+                <h3>3. Compartilhamento</h3>
+                <p>Não compartilhamos seus dados pessoais com terceiros sem seu consentimento.</p>
+                
+                <h3>4. Segurança</h3>
+                <p>Implementamos medidas de segurança para proteger seus dados contra acesso não autorizado.</p>
+                
+                <h3>5. Seus Direitos</h3>
+                <p>Você pode solicitar exclusão ou alteração de seus dados a qualquer momento.</p>
+            </div>
+            <button onclick="fecharModal('privacyModal')" class="primary-btn" style="width:100%; margin-top:10px;">
+                <i class="fas fa-check"></i> Li e Concordo
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ===== FUNÇÕES AUXILIARES =====
+        
+        function togglePassword(fieldId) {
+            const input = document.getElementById(fieldId);
+            const button = input.parentElement.querySelector('.toggle-password');
+            if (input.type === 'password') {
+                input.type = 'text';
+                button.innerHTML = '<i class="fas fa-eye-slash"></i>';
+            } else {
+                input.type = 'password';
+                button.innerHTML = '<i class="fas fa-eye"></i>';
+            }
+        }
+
+        function fecharModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        function showTerms() {
+            document.getElementById('termsModal').style.display = 'block';
+            return false;
+        }
+
+        function showPrivacy() {
+            document.getElementById('privacyModal').style.display = 'block';
+            return false;
+        }
+
+        // ===== FUNÇÃO DE CADASTRO CORRIGIDA =====
+        // Esta função é chamada quando o formulário é submetido
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            // Validação de senha em tempo real
+            const passwordInput = document.getElementById('password');
+            const confirmInput = document.getElementById('confirmPassword');
+            
+            if (passwordInput) {
+                passwordInput.addEventListener('input', function() {
+                    const password = this.value;
+                    
+                    const reqLength = document.getElementById('req-length');
+                    if (password.length >= 6) {
+                        reqLength.className = 'req-valid';
+                        reqLength.innerHTML = '<i class="fas fa-check-circle"></i> Mínimo 6 caracteres';
+                    } else {
+                        reqLength.className = 'req-invalid';
+                        reqLength.innerHTML = '<i class="fas fa-circle"></i> Mínimo 6 caracteres';
+                    }
+                    
+                    const reqLetter = document.getElementById('req-letter');
+                    if (/[a-zA-Z]/.test(password)) {
+                        reqLetter.className = 'req-valid';
+                        reqLetter.innerHTML = '<i class="fas fa-check-circle"></i> Pelo menos uma letra';
+                    } else {
+                        reqLetter.className = 'req-invalid';
+                        reqLetter.innerHTML = '<i class="fas fa-circle"></i> Pelo menos uma letra';
+                    }
+                    
+                    const reqNumber = document.getElementById('req-number');
+                    if (/[0-9]/.test(password)) {
+                        reqNumber.className = 'req-valid';
+                        reqNumber.innerHTML = '<i class="fas fa-check-circle"></i> Pelo menos um número';
+                    } else {
+                        reqNumber.className = 'req-invalid';
+                        reqNumber.innerHTML = '<i class="fas fa-circle"></i> Pelo menos um número';
+                    }
+                });
+            }
+
+            if (confirmInput) {
+                confirmInput.addEventListener('input', function() {
+                    const password = document.getElementById('password').value;
+                    const confirm = this.value;
+                    const matchDiv = document.getElementById('passwordMatch');
+                    
+                    if (confirm.length === 0) {
+                        matchDiv.innerHTML = '';
+                        return;
+                    }
+                    
+                    if (password === confirm) {
+                        matchDiv.innerHTML = '<span style="color:#27ae60;"><i class="fas fa-check-circle"></i> Senhas coincidem</span>';
+                    } else {
+                        matchDiv.innerHTML = '<span style="color:#e74c3c;"><i class="fas fa-times-circle"></i> Senhas não coincidem</span>';
+                    }
+                });
+            }
+
+            // ===== SUBMIT DO FORMULÁRIO =====
+            const form = document.getElementById('signupForm');
+            
+            form.addEventListener('submit', async function(event) {
+                // IMPEDIR O RECARREGAMENTO DA PÁGINA
+                event.preventDefault();
+                event.stopPropagation();
+                
+                console.log('📝 Iniciando cadastro...');
+                
+                // Pegar valores
+                const name = document.getElementById('name').value.trim();
+                const email = document.getElementById('email').value.trim();
+                const password = document.getElementById('password').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+                const termsCheck = document.getElementById('termsCheck');
+                
+                // Elementos de feedback
+                const errorElement = document.getElementById('signupError');
+                const successElement = document.getElementById('signupSuccess');
+                const loadingElement = document.getElementById('signupLoading');
+                const button = document.getElementById('signupButton');
+                
+                // Limpar mensagens anteriores
+                errorElement.style.display = 'none';
+                successElement.style.display = 'none';
+                errorElement.innerHTML = '';
+                
+                // VALIDAÇÕES
+                if (!name || name.length < 3) {
+                    errorElement.innerHTML = '<i class="fas fa-exclamation-circle"></i> Por favor, informe seu nome completo (mínimo 3 caracteres).';
+                    errorElement.style.display = 'block';
+                    return;
+                }
+                
+                if (!email || !email.includes('@') || !email.includes('.')) {
+                    errorElement.innerHTML = '<i class="fas fa-exclamation-circle"></i> Por favor, informe um e-mail válido.';
+                    errorElement.style.display = 'block';
+                    return;
+                }
+                
+                if (password.length < 6) {
+                    errorElement.innerHTML = '<i class="fas fa-exclamation-circle"></i> A senha deve ter pelo menos 6 caracteres.';
+                    errorElement.style.display = 'block';
+                    return;
+                }
+                
+                if (password !== confirmPassword) {
+                    errorElement.innerHTML = '<i class="fas fa-exclamation-circle"></i> As senhas não coincidem.';
+                    errorElement.style.display = 'block';
+                    return;
+                }
+                
+                if (!termsCheck.checked) {
+                    errorElement.innerHTML = '<i class="fas fa-exclamation-circle"></i> Você precisa aceitar os Termos de Uso.';
+                    errorElement.style.display = 'block';
+                    return;
+                }
+                
+                // Mostrar loading
+                button.disabled = true;
+                loadingElement.style.display = 'inline';
+                
+                console.log('📤 Enviando dados para cadastro...');
+                console.log('Nome:', name);
+                console.log('Email:', email);
+                
+                try {
+                    // Chamar a função de cadastro do auth.js
+                    const result = await window.BuscuzAuth.signup(email, password, name);
+                    
+                    // Esconder loading
+                    button.disabled = false;
+                    loadingElement.style.display = 'none';
+                    
+                    if (result.success) {
+                        console.log('✅ Cadastro realizado com sucesso!');
+                        console.log('👤 Usuário:', result.user);
+                        console.log('📧 E-mail:', result.user.email);
+                        
+                        // Mostrar mensagem de sucesso
+                        successElement.style.display = 'block';
+                        
+                        // Limpar formulário
+                        document.getElementById('name').value = '';
+                        document.getElementById('email').value = '';
+                        document.getElementById('password').value = '';
+                        document.getElementById('confirmPassword').value = '';
+                        document.getElementById('termsCheck').checked = false;
+                        
+                        // Redirecionar após 4 segundos
+                        setTimeout(() => {
+                            window.location.href = 'login.html';
+                        }, 4000);
+                        
+                    } else {
+                        console.error('❌ Erro no cadastro:', result.error);
+                        errorElement.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + (result.error || 'Erro ao cadastrar. Tente novamente.');
+                        errorElement.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('❌ Erro inesperado:', error);
+                    button.disabled = false;
+                    loadingElement.style.display = 'none';
+                    errorElement.innerHTML = '<i class="fas fa-exclamation-circle"></i> Erro inesperado. Tente novamente.';
+                    errorElement.style.display = 'block';
+                }
+            });
+        });
+
+        // Fechar modais clicando fora
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        };
+    </script>
+
+    <!-- CARREGAR SCRIPTS NA ORDEM CORRETA -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase.js"></script>
     <script src="auth.js"></script>
 </body>
 </html>

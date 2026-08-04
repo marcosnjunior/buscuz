@@ -6,6 +6,59 @@
     <title>Login - Buscuz</title>
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        /* Estilos adicionais para a página de login */
+        .auth-error {
+            background: #fde8e8;
+            color: #e74c3c;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border-left: 4px solid #e74c3c;
+            display: none;
+        }
+        .auth-error i {
+            margin-right: 8px;
+        }
+        .auth-success {
+            background: #e8f5e9;
+            color: #27ae60;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border-left: 4px solid #27ae60;
+            display: none;
+        }
+        .auth-success i {
+            margin-right: 8px;
+        }
+        .full-width {
+            width: 100%;
+            justify-content: center;
+        }
+        .password-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .password-input-wrapper input {
+            flex: 1;
+            padding-right: 45px;
+        }
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #7f8c8d;
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 5px;
+        }
+        .toggle-password:hover {
+            color: #2c3e50;
+        }
+    </style>
 </head>
 <body>
     <div id="app">
@@ -17,8 +70,15 @@
                     <p>Faça login para acessar suas viagens</p>
                 </div>
 
-                <form id="loginForm" onsubmit="handleLogin(event)">
-                    <div id="loginError" class="auth-error" style="display:none;"></div>
+                <!-- FORMULÁRIO CORRIGIDO - SEM onsubmit no HTML -->
+                <form id="loginForm">
+                    <div id="loginError" class="auth-error"></div>
+                    <div id="loginSuccess" class="auth-success">
+                        <i class="fas fa-check-circle"></i> 
+                        Login realizado com sucesso!
+                        <br>
+                        <small>Redirecionando...</small>
+                    </div>
                     
                     <div class="form-group">
                         <label><i class="fas fa-envelope"></i> E-mail</label>
@@ -27,7 +87,12 @@
 
                     <div class="form-group">
                         <label><i class="fas fa-lock"></i> Senha</label>
-                        <input type="password" id="password" required placeholder="Digite sua senha" />
+                        <div class="password-input-wrapper">
+                            <input type="password" id="password" required placeholder="Digite sua senha" />
+                            <button type="button" class="toggle-password" onclick="togglePassword('password')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <button type="submit" id="loginButton" class="primary-btn full-width">
@@ -45,9 +110,137 @@
         </div>
     </div>
 
-    <!-- Carregar scripts na ordem correta -->
+    <script>
+        // ===== FUNÇÕES AUXILIARES =====
+        
+        function togglePassword(fieldId) {
+            const input = document.getElementById(fieldId);
+            const button = input.parentElement.querySelector('.toggle-password');
+            if (input.type === 'password') {
+                input.type = 'text';
+                button.innerHTML = '<i class="fas fa-eye-slash"></i>';
+            } else {
+                input.type = 'password';
+                button.innerHTML = '<i class="fas fa-eye"></i>';
+            }
+        }
+
+        // ===== FUNÇÃO DE LOGIN CORRIGIDA =====
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            const form = document.getElementById('loginForm');
+            
+            form.addEventListener('submit', async function(event) {
+                // IMPEDIR O RECARREGAMENTO DA PÁGINA
+                event.preventDefault();
+                event.stopPropagation();
+                
+                console.log('🔐 Tentando login...');
+                
+                // Pegar valores
+                const email = document.getElementById('email').value.trim();
+                const password = document.getElementById('password').value;
+                
+                // Elementos de feedback
+                const errorElement = document.getElementById('loginError');
+                const successElement = document.getElementById('loginSuccess');
+                const loadingElement = document.getElementById('loginLoading');
+                const button = document.getElementById('loginButton');
+                
+                // Limpar mensagens anteriores
+                errorElement.style.display = 'none';
+                successElement.style.display = 'none';
+                errorElement.innerHTML = '';
+                
+                // VALIDAÇÕES
+                if (!email || !email.includes('@') || !email.includes('.')) {
+                    errorElement.innerHTML = '<i class="fas fa-exclamation-circle"></i> Por favor, informe um e-mail válido.';
+                    errorElement.style.display = 'block';
+                    return;
+                }
+                
+                if (!password || password.length < 6) {
+                    errorElement.innerHTML = '<i class="fas fa-exclamation-circle"></i> A senha deve ter pelo menos 6 caracteres.';
+                    errorElement.style.display = 'block';
+                    return;
+                }
+                
+                // Mostrar loading
+                button.disabled = true;
+                loadingElement.style.display = 'inline';
+                
+                console.log('📤 Enviando dados para login...');
+                console.log('Email:', email);
+                
+                try {
+                    // Chamar a função de login do auth.js
+                    const result = await window.BuscuzAuth.login(email, password);
+                    
+                    // Esconder loading
+                    button.disabled = false;
+                    loadingElement.style.display = 'none';
+                    
+                    if (result.success) {
+                        console.log('✅ Login realizado com sucesso!');
+                        console.log('👤 Usuário:', result.user);
+                        console.log('📧 E-mail:', result.user.email);
+                        
+                        // Mostrar mensagem de sucesso
+                        successElement.style.display = 'block';
+                        
+                        // Redirecionar após 2 segundos
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 2000);
+                        
+                    } else {
+                        console.error('❌ Erro no login:', result.error);
+                        
+                        // Mensagens de erro específicas
+                        let errorMsg = result.error || 'Erro ao fazer login. Tente novamente.';
+                        
+                        // Traduzir mensagens comuns do Supabase
+                        if (errorMsg.includes('Invalid login credentials')) {
+                            errorMsg = 'E-mail ou senha incorretos. Verifique seus dados.';
+                        } else if (errorMsg.includes('Email not confirmed')) {
+                            errorMsg = 'E-mail não confirmado. Verifique sua caixa de entrada e clique no link de confirmação.';
+                        } else if (errorMsg.includes('User not found')) {
+                            errorMsg = 'Usuário não encontrado. Verifique seu e-mail ou crie uma conta.';
+                        }
+                        
+                        errorElement.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + errorMsg;
+                        errorElement.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('❌ Erro inesperado:', error);
+                    button.disabled = false;
+                    loadingElement.style.display = 'none';
+                    errorElement.innerHTML = '<i class="fas fa-exclamation-circle"></i> Erro inesperado. Tente novamente.';
+                    errorElement.style.display = 'block';
+                }
+            });
+            
+            // Permitir login com Enter
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter') {
+                    const form = document.getElementById('loginForm');
+                    if (document.activeElement && document.activeElement.closest('form') === form) {
+                        form.dispatchEvent(new Event('submit'));
+                    }
+                }
+            });
+        });
+
+        // Fechar modais clicando fora (se houver)
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        };
+    </script>
+
+    <!-- CARREGAR SCRIPTS NA ORDEM CORRETA -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase.js"></script>
     <script src="auth.js"></script>
 </body>
 </html>

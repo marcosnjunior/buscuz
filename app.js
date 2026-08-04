@@ -56,107 +56,7 @@ let pontoEmEdicao = null;
 let despesaEmEdicao = null;
 let filtroAtual = 'todas';
 let viagemEmEdicao = null;
-
-
-// ============================================================
-// Integração com Supabase - Sincronização
-// ============================================================
-
-/**
- * Sincronizar dados locais com Supabase
- */
-async function syncDataWithSupabase() {
-    const authResult = await checkAuth();
-    if (!authResult.authenticated) {
-        console.log('Usuário não autenticado, sincronização ignorada');
-        return;
-    }
-    
-    const userId = authResult.user.id;
-    console.log('🔄 Sincronizando dados com Supabase...');
-    
-    // Carregar dados do Supabase
-    const result = await loadViagensFromSupabase(userId);
-    
-    if (result.success && result.viagens) {
-        // Converter dados do Supabase para o formato do Buscuz
-        const viagensLocal = result.viagens.map(v => ({
-            id: v.id,
-            nome: v.nome,
-            destino: v.destino || '',
-            dataInicio: v.data_inicio,
-            dataFim: v.data_fim,
-            descricao: v.descricao || '',
-            trechos: v.trechos.map(t => ({
-                id: t.id,
-                cidadeAtual: t.cidade_atual,
-                dataCheckin: t.data_checkin,
-                dataCheckout: t.data_checkout,
-                proximaCidade: t.proxima_cidade,
-                distancia: t.distancia,
-                tempoEstimado: t.tempo_estimado,
-                odometro: t.odometro,
-                pontos: t.pontos.map(p => ({
-                    id: p.id,
-                    nome: p.nome,
-                    localizacao: p.localizacao,
-                    data: p.data,
-                    custo: p.custo,
-                    observacoes: p.observacoes
-                })),
-                despesas: t.despesas.map(d => ({
-                    id: d.id,
-                    descricao: d.descricao,
-                    valor: d.valor,
-                    data: d.data,
-                    tipo: d.tipo
-                }))
-            }))
-        }));
-        
-        // Atualizar dados locais
-        dados.viagens = viagensLocal;
-        salvarDados();
-        console.log('✅ Dados sincronizados do Supabase');
-    }
-    
-    // Sincronizar dados locais para o Supabase
-    await syncViagens(userId, dados.viagens);
-    console.log('✅ Dados sincronizados para o Supabase');
-}
-
-/**
- * Verificar autenticação e carregar dados
- */
-async function initApp() {
-    const authResult = await checkAuth();
-    
-    if (!authResult.authenticated) {
-        window.location.href = 'login.html';
-        return;
-    }
-    
-    // Carregar dados
-    carregarDados();
-    
-    // Sincronizar com Supabase
-    await syncDataWithSupabase();
-    
-    // Renderizar
-    renderizarViagens();
-    
-    // Atualizar informações do usuário
-    const userInfo = document.getElementById('userInfo');
-    if (userInfo && authResult.user) {
-        const name = authResult.user.user_metadata?.name || authResult.user.email;
-        userInfo.innerHTML = `
-            <span class="user-name"><i class="fas fa-user-circle"></i> ${name}</span>
-            <button class="logout-btn" onclick="handleLogout()">
-                <i class="fas fa-sign-out-alt"></i> Sair
-            </button>
-        `;
-    }
-}
+let userAtual = null; // Usuário logado
 
 // ===== FUNÇÕES DE PERSISTÊNCIA =====
 
@@ -187,10 +87,22 @@ function salvarDados() {
     }
 }
 
-// ===== FUNÇÕES SUPABASE (stubs) =====
+// ===== VERIFICAR CONEXÃO =====
 
-async function syncWithSupabase() {
-    console.log('Sync com Supabase - a ser implementado');
+function isOnline() {
+    return navigator.onLine;
+}
+
+function showSyncStatus(message, isSuccess = true) {
+    const statusEl = document.getElementById('syncStatus');
+    if (statusEl) {
+        statusEl.textContent = message;
+        statusEl.className = isSuccess ? 'sync-success' : 'sync-error';
+        statusEl.style.display = 'block';
+        setTimeout(() => {
+            statusEl.style.display = 'none';
+        }, 3000);
+    }
 }
 
 // ===== HELPERS =====
@@ -283,7 +195,163 @@ function calcularTotalViagem(viagem) {
     return total;
 }
 
+// ===== SINCRONIZAÇÃO =====
+
+async function syncDataToSupabase() {
+    // Verificar se está online
+    if (!isOnline()) {
+        console.warn('⚠️ Offline - Dados salvos localmente. Serão sincronizados quando online.');
+        showSyncStatus('⚠️ Offline - Dados salvos localmente', false);
+        return;
+    }
+    
+    if (!userAtual) {
+        console.warn('⚠️ Usuário não autenticado - Não é possível sincronizar');
+        return;
+    }
+    
+    try {
+        console.log('🔄 Sincronizando dados para o Supabase...');
+        showSyncStatus('🔄 Sincronizando...', true);
+        
+        const result = await window.BuscuzAuth.syncData(userAtual.id, dados.viagens);
+        
+        if (result.success) {
+            console.log('✅ Dados sincronizados com sucesso!');
+            showSyncStatus('✅ Dados sincronizados com sucesso!', true);
+        } else {
+            console.error('❌ Erro na sincronização:', result.error);
+            showSyncStatus('❌ Erro na sincronização: ' + result.error, false);
+        }
+    } catch (error) {
+        console.error('❌ Erro na sincronização:', error);
+        showSyncStatus('❌ Erro na sincronização', false);
+    }
+}
+
+async function syncDataFromSupabase() {
+    if (!userAtual) return;
+    
+    try {
+        console.log('🔄 Carregando dados do Supabase...');
+        const result = await window.BuscuzAuth.loadData(userAtual.id);
+        
+        if (result.success && result.viagens) {
+            // Converter dados do Supabase para o formato local
+            const viagensDoSupabase = result.viagens.map(v => ({
+                id: v.id,
+                nome: v.nome,
+                destino: v.destino || '',
+                dataInicio: v.data_inicio,
+                dataFim: v.data_fim,
+                descricao: v.descricao || '',
+                trechos: (v.trechos || []).map(t => ({
+                    id: t.id,
+                    cidadeAtual: t.cidade_atual,
+                    dataCheckin: t.data_checkin,
+                    dataCheckout: t.data_checkout,
+                    proximaCidade: t.proxima_cidade,
+                    distancia: t.distancia,
+                    tempoEstimado: t.tempo_estimado,
+                    odometro: t.odometro,
+                    pontos: (t.pontos || []).map(p => ({
+                        id: p.id,
+                        nome: p.nome,
+                        localizacao: p.localizacao || '',
+                        data: p.data,
+                        custo: p.custo || 0,
+                        observacoes: p.observacoes || ''
+                    })),
+                    despesas: (t.despesas || []).map(d => ({
+                        id: d.id,
+                        descricao: d.descricao,
+                        valor: d.valor || 0,
+                        data: d.data,
+                        tipo: d.tipo || 'outro'
+                    }))
+                }))
+            }));
+            
+            // Verificar se há dados para sincronizar
+            if (viagensDoSupabase.length > 0) {
+                dados.viagens = viagensDoSupabase;
+                salvarDados();
+                console.log('✅ Dados carregados do Supabase! (' + viagensDoSupabase.length + ' viagens)');
+                renderizarViagens();
+            } else {
+                console.log('📭 Nenhuma viagem encontrada no Supabase. Enviando dados locais...');
+                // Se não há dados no Supabase, enviar os locais
+                await syncDataToSupabase();
+            }
+        }
+    } catch (error) {
+        console.warn('⚠️ Erro ao carregar dados do Supabase:', error);
+        // Continuar com dados locais
+    }
+}
+
 // ===== CRUD VIAGENS =====
+
+/**
+ * Deletar viagem do Supabase
+ */
+// window.BuscuzAuth.deleteViagem = async function(viagemId) {
+//     try {
+//         console.log('🗑️ Deletando viagem do Supabase:', viagemId);
+        
+//         // Primeiro deletar todos os trechos, pontos e despesas
+//         // Buscar todos os trechos da viagem
+//         const { data: trechos, error: fetchError } = await supabaseClient
+//             .from('trechos')
+//             .select('id')
+//             .eq('viagem_id', viagemId);
+        
+//         if (fetchError) throw fetchError;
+        
+//         // Deletar pontos e despesas de cada trecho
+//         if (trechos && trechos.length > 0) {
+//             for (const trecho of trechos) {
+//                 // Deletar pontos do trecho
+//                 const { error: pError } = await supabaseClient
+//                     .from('pontos')
+//                     .delete()
+//                     .eq('trecho_id', trecho.id);
+                
+//                 if (pError) throw pError;
+                
+//                 // Deletar despesas do trecho
+//                 const { error: dError } = await supabaseClient
+//                     .from('despesas')
+//                     .delete()
+//                     .eq('trecho_id', trecho.id);
+                
+//                 if (dError) throw dError;
+//             }
+            
+//             // Deletar todos os trechos da viagem
+//             const { error: tError } = await supabaseClient
+//                 .from('trechos')
+//                 .delete()
+//                 .eq('viagem_id', viagemId);
+            
+//             if (tError) throw tError;
+//         }
+        
+//         // Finalmente deletar a viagem
+//         const { error } = await supabaseClient
+//             .from('viagens')
+//             .delete()
+//             .eq('id', viagemId);
+        
+//         if (error) throw error;
+        
+//         console.log('✅ Viagem deletada do Supabase!');
+//         return { success: true };
+//     } catch (error) {
+//         console.error('❌ Erro ao deletar viagem:', error.message);
+//         return { success: false, error: error.message };
+//     }
+// };
 
 function criarViagem(dadosViagem) {
     const nova = {
@@ -296,11 +364,15 @@ function criarViagem(dadosViagem) {
         trechos: []
     };
     
+    // Adicionar à lista local
     dados.viagens.push(nova);
     salvarDados();
     renderizarViagens();
     
-    console.log('✅ Viagem criada:', nova.nome);
+    // Sincronizar com Supabase
+    syncDataToSupabase();
+    
+    console.log('✅ Viagem criada localmente:', nova.nome);
     return nova;
 }
 
@@ -320,6 +392,7 @@ function atualizarViagem(id, dadosAtualizados) {
 
     salvarDados();
     renderizarViagens();
+    syncDataToSupabase();
     
     console.log('✅ Viagem atualizada:', viagem.nome);
 }
@@ -328,11 +401,54 @@ function excluirViagem(id) {
     if (!confirm('Tem certeza que deseja excluir esta viagem e todos os seus trechos?')) return;
     
     const viagem = dados.viagens.find(v => v.id === id);
+    if (!viagem) {
+        alert('Viagem não encontrada!');
+        return;
+    }
+    
+    // Remover da lista local
     dados.viagens = dados.viagens.filter(v => v.id !== id);
     salvarDados();
     renderizarViagens();
     
-    console.log('🗑️ Viagem excluída:', viagem ? viagem.nome : id);
+    // Deletar do Supabase
+    deletarViagemDoSupabase(id);
+    
+    console.log('🗑️ Viagem excluída localmente:', viagem.nome);
+}
+
+/**
+ * Deletar viagem do Supabase
+ */
+async function deletarViagemDoSupabase(viagemId) {
+    if (!isOnline()) {
+        console.warn('⚠️ Offline - A viagem será deletada quando online.');
+        showSyncStatus('⚠️ Offline - A viagem será deletada quando online', false);
+        return;
+    }
+    
+    if (!userAtual) {
+        console.warn('⚠️ Usuário não autenticado - Não é possível deletar');
+        return;
+    }
+    
+    try {
+        console.log('🗑️ Deletando viagem do Supabase...');
+        showSyncStatus('🗑️ Deletando viagem...', true);
+        
+        const result = await window.BuscuzAuth.deleteViagem(viagemId);
+        
+        if (result.success) {
+            console.log('✅ Viagem deletada do Supabase!');
+            showSyncStatus('✅ Viagem deletada com sucesso!', true);
+        } else {
+            console.error('❌ Erro ao deletar viagem:', result.error);
+            showSyncStatus('❌ Erro ao deletar: ' + result.error, false);
+        }
+    } catch (error) {
+        console.error('❌ Erro ao deletar viagem:', error);
+        showSyncStatus('❌ Erro ao deletar viagem', false);
+    }
 }
 
 // ===== CRUD TRECHOS =====
@@ -365,6 +481,7 @@ function criarTrecho(dadosTrecho) {
     viagem.trechos.push(novo);
     salvarDados();
     renderizarTrechos();
+    syncDataToSupabase();
     
     console.log('✅ Trecho criado:', novo.cidadeAtual, '→', novo.proximaCidade);
     return novo;
@@ -394,6 +511,7 @@ function atualizarTrecho(id, dadosAtualizados) {
 
     salvarDados();
     renderizarTrechos();
+    syncDataToSupabase();
     
     console.log('✅ Trecho atualizado:', trecho.cidadeAtual, '→', trecho.proximaCidade);
 }
@@ -405,14 +523,41 @@ function excluirTrecho(id) {
         return;
     }
     
+    // O confirm é chamado aqui apenas uma vez
+    if (!confirm('Tem certeza que deseja excluir este trecho e todos os seus pontos e despesas?')) return;
+    
     const trecho = viagem.trechos.find(t => t.id === id);
     viagem.trechos = viagem.trechos.filter(t => t.id !== id);
     salvarDados();
     fecharModal('detalhesModal');
     renderizarTrechos();
     
+    // Deletar do Supabase
+    deletarTrechoDoSupabase(id);
+    
     console.log('🗑️ Trecho excluído:', trecho ? trecho.cidadeAtual : id);
 }
+
+/**
+ * Deletar trecho do Supabase
+ */
+async function deletarTrechoDoSupabase(trechoId) {
+    if (!isOnline() || !userAtual) return;
+    
+    try {
+        console.log('🗑️ Deletando trecho do Supabase...');
+        const result = await window.BuscuzAuth.deleteTrecho(trechoId);
+        if (result.success) {
+            console.log('✅ Trecho deletado do Supabase!');
+        } else {
+            console.error('❌ Erro ao deletar trecho:', result.error);
+        }
+    } catch (error) {
+        console.error('❌ Erro ao deletar trecho:', error);
+    }
+}
+
+
 
 // ===== CRUD PONTOS =====
 
@@ -440,6 +585,7 @@ function criarPonto(trechoId, dadosPonto) {
     trecho.pontos.push(novo);
     salvarDados();
     renderizarTrechos();
+    syncDataToSupabase();
     
     console.log('✅ Ponto criado:', novo.nome);
     return novo;
@@ -472,6 +618,7 @@ function atualizarPonto(trechoId, pontoId, dadosPonto) {
 
     salvarDados();
     renderizarTrechos();
+    syncDataToSupabase();
     
     console.log('✅ Ponto atualizado:', ponto.nome);
 }
@@ -489,12 +636,44 @@ function excluirPonto(trechoId, pontoId) {
         return;
     }
     
+    if (!confirm('Tem certeza que deseja excluir este ponto?')) return;
+    
     const ponto = trecho.pontos.find(p => p.id === pontoId);
     trecho.pontos = trecho.pontos.filter(p => p.id !== pontoId);
     salvarDados();
     renderizarTrechos();
     
+    // Deletar do Supabase - USANDO CHAMADA DIRETA
+    deletarPontoDoSupabase(pontoId);
+    
     console.log('🗑️ Ponto excluído:', ponto ? ponto.nome : pontoId);
+}
+
+/**
+ * Deletar ponto do Supabase (CHAMADA DIRETA - SEM DEPENDER DO AUTH.JS)
+ */
+async function deletarPontoDoSupabase(pontoId) {
+    if (!isOnline() || !userAtual) return;
+    
+    try {
+        console.log('🗑️ Deletando ponto do Supabase...');
+        
+        const client = window.supabaseClient || window.SUPABASE_CLIENT;
+        if (!client) {
+            throw new Error('Cliente Supabase não disponível');
+        }
+        
+        const { error } = await client
+            .from('pontos')
+            .delete()
+            .eq('id', pontoId);
+        
+        if (error) throw error;
+        
+        console.log('✅ Ponto deletado do Supabase!');
+    } catch (error) {
+        console.error('❌ Erro ao deletar ponto:', error);
+    }
 }
 
 // ===== CRUD DESPESAS =====
@@ -522,6 +701,7 @@ function criarDespesa(trechoId, dadosDespesa) {
     trecho.despesas.push(novo);
     salvarDados();
     renderizarTrechos();
+    syncDataToSupabase();
     
     console.log('✅ Despesa criada:', novo.descricao);
     return novo;
@@ -553,6 +733,7 @@ function atualizarDespesa(trechoId, despesaId, dadosDespesa) {
 
     salvarDados();
     renderizarTrechos();
+    syncDataToSupabase();
     
     console.log('✅ Despesa atualizada:', despesa.descricao);
 }
@@ -570,12 +751,36 @@ function excluirDespesa(trechoId, despesaId) {
         return;
     }
     
+    if (!confirm('Tem certeza que deseja excluir esta despesa?')) return;
+    
     const despesa = trecho.despesas.find(d => d.id === despesaId);
     trecho.despesas = trecho.despesas.filter(d => d.id !== despesaId);
     salvarDados();
     renderizarTrechos();
     
+    // Deletar do Supabase
+    deletarDespesaDoSupabase(despesaId);
+    
     console.log('🗑️ Despesa excluída:', despesa ? despesa.descricao : despesaId);
+}
+
+/**
+ * Deletar despesa do Supabase
+ */
+async function deletarDespesaDoSupabase(despesaId) {
+    if (!isOnline() || !userAtual) return;
+    
+    try {
+        console.log('🗑️ Deletando despesa do Supabase...');
+        const result = await window.BuscuzAuth.deleteDespesa(despesaId);
+        if (result.success) {
+            console.log('✅ Despesa deletada do Supabase!');
+        } else {
+            console.error('❌ Erro ao deletar despesa:', result.error);
+        }
+    } catch (error) {
+        console.error('❌ Erro ao deletar despesa:', error);
+    }
 }
 
 // ===== RENDERIZAÇÃO - PÁGINA PRINCIPAL =====
@@ -806,6 +1011,7 @@ function renderizarTrechos() {
         });
     });
 }
+
 // ===== DETALHES DO TRECHO =====
 
 function abrirDetalhes(id) {
@@ -1008,10 +1214,13 @@ function abrirDetalhes(id) {
                     editarPonto(trecho.id, id);
                     break;
                 case 'excluirPonto':
-                    if (confirm('Excluir este ponto?')) {
-                        excluirPonto(trecho.id, id);
-                        abrirDetalhes(trecho.id);
-                    }
+                    // REMOVER este confirm, pois já existe na função excluirPonto
+                    // if (confirm('Excluir este ponto?')) {
+                    //     excluirPonto(trecho.id, id);
+                    //     abrirDetalhes(trecho.id);
+                    // }
+                    excluirPonto(trecho.id, id);
+                    abrirDetalhes(trecho.id);
                     break;
                 case 'novaDespesa':
                     fecharModal('detalhesModal');
@@ -1022,10 +1231,8 @@ function abrirDetalhes(id) {
                     editarDespesa(trecho.id, id);
                     break;
                 case 'excluirDespesa':
-                    if (confirm('Excluir esta despesa?')) {
-                        excluirDespesa(trecho.id, id);
-                        abrirDetalhes(trecho.id);
-                    }
+                    excluirDespesa(trecho.id, id);
+                    abrirDetalhes(trecho.id);
                     break;
             }
         });
@@ -1268,10 +1475,9 @@ function editarDespesa(trechoId, despesaId) {
     }
 }
 
-// ===== INICIALIZAÇÃO =====
+// ===== INICIALIZAÇÃO DAS PÁGINAS =====
 
 function initPaginaViagens() {
-    carregarDados();
     renderizarViagens();
 
     // Configurações
@@ -1296,6 +1502,18 @@ function initPaginaViagens() {
             } else {
                 alert('Por favor, insira valores válidos (maiores que zero).');
             }
+        });
+    }
+
+    // Botão de sincronização
+    const btnSync = document.getElementById('btnSync');
+    if (btnSync) {
+        btnSync.addEventListener('click', async function() {
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...';
+            await syncDataToSupabase();
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-sync"></i> Sincronizar';
         });
     }
 
@@ -1368,7 +1586,6 @@ function initPaginaViagens() {
 
     console.log('🚐 Buscuz - Página de Viagens');
     console.log(`📊 ${dados.viagens.length} viagens carregadas`);
-    console.log('Versão 2.1 - Cadastro de Viagens Funcional');
 }
 
 function initPaginaRoteiro() {
@@ -1380,7 +1597,6 @@ function initPaginaRoteiro() {
         return;
     }
 
-    carregarDados();
     viagemAtual = dados.viagens.find(v => v.id === viagemId);
     
     if (!viagemAtual) {
@@ -1420,6 +1636,18 @@ function initPaginaRoteiro() {
             } else {
                 alert('Por favor, insira valores válidos (maiores que zero).');
             }
+        });
+    }
+
+    // Botão de sincronização no roteiro
+    const btnSyncRoteiro = document.getElementById('btnSyncRoteiro');
+    if (btnSyncRoteiro) {
+        btnSyncRoteiro.addEventListener('click', async function() {
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            await syncDataToSupabase();
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-sync"></i>';
         });
     }
 
@@ -1566,13 +1794,77 @@ function initPaginaRoteiro() {
     console.log(`📍 ${viagemAtual.trechos ? viagemAtual.trechos.length : 0} trechos carregados`);
 }
 
-// ===== DETECTAR PÁGINA ATUAL =====
+// ===== INICIALIZAÇÃO PRINCIPAL =====
 
-// Verificar qual página está sendo carregada
-if (document.getElementById('viagensContainer')) {
-    // Estamos na página de viagens
-    document.addEventListener('DOMContentLoaded', initPaginaViagens);
-} else if (document.getElementById('trechosContainer')) {
-    // Estamos na página de roteiro
-    document.addEventListener('DOMContentLoaded', initPaginaRoteiro);
+async function initApp() {
+    console.log('🚀 Inicializando Buscuz...');
+    
+    // Verificar autenticação
+    const authResult = await window.checkAuthAndRedirect();
+    
+    if (!authResult || !authResult.authenticated) {
+        console.log('⛔ Usuário não autenticado. Redirecionando...');
+        return;
+    }
+    
+    // Salvar usuário atual
+    userAtual = authResult.user;
+    console.log('✅ Usuário autenticado:', userAtual.email);
+    
+    // Carregar dados locais
+    carregarDados();
+    
+    // Tentar carregar do Supabase
+    await syncDataFromSupabase();
+    
+    // Inicializar conforme a página
+    if (document.getElementById('viagensContainer')) {
+        console.log('📋 Página de viagens detectada');
+        initPaginaViagens();
+    } else if (document.getElementById('trechosContainer')) {
+        console.log('📋 Página de roteiro detectada');
+        initPaginaRoteiro();
+    }
+    
+    // Atualizar informações do usuário
+    atualizarInfoUsuario(authResult.user);
 }
+
+function atualizarInfoUsuario(user) {
+    const userInfo = document.getElementById('userInfo');
+    if (userInfo) {
+        const name = user.user_metadata?.name || user.email;
+        userInfo.innerHTML = `
+            <span class="user-name"><i class="fas fa-user-circle"></i> ${name}</span>
+            <button class="logout-btn" onclick="handleLogout()">
+                <i class="fas fa-sign-out-alt"></i> Sair
+            </button>
+        `;
+    }
+}
+
+// ===== EVENTOS DE CONEXÃO =====
+
+// Sincronizar quando voltar online
+window.addEventListener('online', function() {
+    console.log('📶 Conexão restaurada! Sincronizando dados...');
+    if (userAtual) {
+        syncDataToSupabase();
+    }
+});
+
+// Sincronizar periodicamente (a cada 5 minutos)
+setInterval(function() {
+    if (userAtual && isOnline()) {
+        console.log('🔄 Sincronização automática...');
+        syncDataToSupabase();
+    }
+}, 300000); // 5 minutos
+
+// ===== INICIAR APLICAÇÃO =====
+
+// Iniciar quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', initApp);
+
+console.log('📦 Buscuz - App carregado!');
+console.log('Versão 2.1 - Com autenticação e sincronização');
