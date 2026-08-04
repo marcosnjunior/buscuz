@@ -3,45 +3,15 @@
 // Versão 2.1 - Cadastro de Viagens Funcional
 // ============================================================
 
-// ===== CONFIGURAÇÕES =====
+// ============================================================
+// 1. CONFIGURAÇÕES
+// ============================================================
 const STORAGE_KEY = 'buscuz_data';
 const CONFIG_KEY = 'buscuz_config';
 
-// ===== MODELO DE DADOS =====
-// Estrutura:
-// {
-//   viagens: [
-//     {
-//       id: string,
-//       nome: string,
-//       destino: string,
-//       dataInicio: string (YYYY-MM-DD),
-//       dataFim: string (YYYY-MM-DD),
-//       descricao: string,
-//       trechos: [
-//         {
-//           id: string,
-//           cidadeAtual: string,
-//           dataCheckin: string,
-//           dataCheckout: string,
-//           proximaCidade: string,
-//           distancia: number,
-//           tempoEstimado: number,
-//           odometro: number,
-//           pontos: [
-//             { id, nome, localizacao, data, custo, observacoes }
-//           ],
-//           despesas: [
-//             { id, descricao, valor, data, tipo }
-//           ]
-//         }
-//       ]
-//     }
-//   ],
-//   config: { consumoMedio: number, precoCombustivel: number }
-// }
-
-// ===== ESTADO GLOBAL =====
+// ============================================================
+// 2. ESTADO GLOBAL
+// ============================================================
 let dados = {
     viagens: [],
     config: {
@@ -58,7 +28,9 @@ let filtroAtual = 'todas';
 let viagemEmEdicao = null;
 let userAtual = null; // Usuário logado
 
-// ===== FUNÇÕES DE PERSISTÊNCIA =====
+// ============================================================
+// 3. FUNÇÕES DE PERSISTÊNCIA
+// ============================================================
 
 function carregarDados() {
     try {
@@ -87,7 +59,9 @@ function salvarDados() {
     }
 }
 
-// ===== VERIFICAR CONEXÃO =====
+// ============================================================
+// 4. VERIFICAR CONEXÃO
+// ============================================================
 
 function isOnline() {
     return navigator.onLine;
@@ -105,7 +79,9 @@ function showSyncStatus(message, isSuccess = true) {
     }
 }
 
-// ===== HELPERS =====
+// ============================================================
+// 5. HELPERS
+// ============================================================
 
 function gerarId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
@@ -195,7 +171,85 @@ function calcularTotalViagem(viagem) {
     return total;
 }
 
-// ===== SINCRONIZAÇÃO =====
+// ============================================================
+// 6. SINCRONIZAÇÃO DE CONFIGURAÇÕES
+// ============================================================
+
+async function syncConfigToSupabase() {
+    if (!isOnline()) {
+        console.warn('⚠️ Offline - Configurações salvas localmente.');
+        return;
+    }
+    
+    if (!userAtual) {
+        console.warn('⚠️ Usuário não autenticado - Não é possível sincronizar configurações');
+        return;
+    }
+    
+    try {
+        console.log('🔄 Sincronizando configurações para o Supabase...');
+        
+        const result = await window.BuscuzAuth.saveConfig(userAtual.id, dados.config);
+        
+        if (result.success) {
+            console.log('✅ Configurações sincronizadas com sucesso!');
+        } else {
+            console.error('❌ Erro ao sincronizar configurações:', result.error);
+        }
+    } catch (error) {
+        console.error('❌ Erro ao sincronizar configurações:', error);
+    }
+}
+
+async function syncConfigFromSupabase() {
+    if (!userAtual) return;
+    
+    try {
+        console.log('🔄 Carregando configurações do Supabase...');
+        
+        const result = await window.BuscuzAuth.loadConfig(userAtual.id);
+        
+        if (result.success) {
+            dados.config.consumoMedio = result.config.consumoMedio;
+            dados.config.precoCombustivel = result.config.precoCombustivel;
+            salvarDados();
+            console.log('✅ Configurações carregadas do Supabase!');
+            
+            // Atualizar campos no modal se estiver aberto
+            const consumoInput = document.getElementById('consumoMedio');
+            const precoInput = document.getElementById('precoCombustivel');
+            if (consumoInput) consumoInput.value = dados.config.consumoMedio;
+            if (precoInput) precoInput.value = dados.config.precoCombustivel;
+        }
+    } catch (error) {
+        console.warn('⚠️ Erro ao carregar configurações do Supabase:', error);
+    }
+}
+
+/**
+ * Carregar configurações do Supabase (chamado no initApp)
+ */
+async function carregarConfiguracoes() {
+    if (!userAtual) return;
+    
+    try {
+        console.log('📥 Carregando configurações...');
+        const result = await window.BuscuzAuth.loadConfig(userAtual.id);
+        
+        if (result.success) {
+            dados.config.consumoMedio = result.config.consumoMedio;
+            dados.config.precoCombustivel = result.config.precoCombustivel;
+            salvarDados();
+            console.log('✅ Configurações carregadas:', dados.config);
+        }
+    } catch (error) {
+        console.warn('⚠️ Erro ao carregar configurações:', error);
+    }
+}
+
+// ============================================================
+// 7. SINCRONIZAÇÃO DE DADOS
+// ============================================================
 
 async function syncDataToSupabase() {
     // Verificar se está online
@@ -214,6 +268,10 @@ async function syncDataToSupabase() {
         console.log('🔄 Sincronizando dados para o Supabase...');
         showSyncStatus('🔄 Sincronizando...', true);
         
+        // Sincronizar configurações
+        await syncConfigToSupabase();
+        
+        // Sincronizar viagens
         const result = await window.BuscuzAuth.syncData(userAtual.id, dados.viagens);
         
         if (result.success) {
@@ -234,6 +292,11 @@ async function syncDataFromSupabase() {
     
     try {
         console.log('🔄 Carregando dados do Supabase...');
+        
+        // Carregar configurações primeiro
+        await syncConfigFromSupabase();
+        
+        // Carregar viagens
         const result = await window.BuscuzAuth.loadData(userAtual.id);
         
         if (result.success && result.viagens) {
@@ -290,68 +353,9 @@ async function syncDataFromSupabase() {
     }
 }
 
-// ===== CRUD VIAGENS =====
-
-/**
- * Deletar viagem do Supabase
- */
-// window.BuscuzAuth.deleteViagem = async function(viagemId) {
-//     try {
-//         console.log('🗑️ Deletando viagem do Supabase:', viagemId);
-        
-//         // Primeiro deletar todos os trechos, pontos e despesas
-//         // Buscar todos os trechos da viagem
-//         const { data: trechos, error: fetchError } = await supabaseClient
-//             .from('trechos')
-//             .select('id')
-//             .eq('viagem_id', viagemId);
-        
-//         if (fetchError) throw fetchError;
-        
-//         // Deletar pontos e despesas de cada trecho
-//         if (trechos && trechos.length > 0) {
-//             for (const trecho of trechos) {
-//                 // Deletar pontos do trecho
-//                 const { error: pError } = await supabaseClient
-//                     .from('pontos')
-//                     .delete()
-//                     .eq('trecho_id', trecho.id);
-                
-//                 if (pError) throw pError;
-                
-//                 // Deletar despesas do trecho
-//                 const { error: dError } = await supabaseClient
-//                     .from('despesas')
-//                     .delete()
-//                     .eq('trecho_id', trecho.id);
-                
-//                 if (dError) throw dError;
-//             }
-            
-//             // Deletar todos os trechos da viagem
-//             const { error: tError } = await supabaseClient
-//                 .from('trechos')
-//                 .delete()
-//                 .eq('viagem_id', viagemId);
-            
-//             if (tError) throw tError;
-//         }
-        
-//         // Finalmente deletar a viagem
-//         const { error } = await supabaseClient
-//             .from('viagens')
-//             .delete()
-//             .eq('id', viagemId);
-        
-//         if (error) throw error;
-        
-//         console.log('✅ Viagem deletada do Supabase!');
-//         return { success: true };
-//     } catch (error) {
-//         console.error('❌ Erro ao deletar viagem:', error.message);
-//         return { success: false, error: error.message };
-//     }
-// };
+// ============================================================
+// 8. CRUD VIAGENS
+// ============================================================
 
 function criarViagem(dadosViagem) {
     const nova = {
@@ -364,12 +368,9 @@ function criarViagem(dadosViagem) {
         trechos: []
     };
     
-    // Adicionar à lista local
     dados.viagens.push(nova);
     salvarDados();
     renderizarViagens();
-    
-    // Sincronizar com Supabase
     syncDataToSupabase();
     
     console.log('✅ Viagem criada localmente:', nova.nome);
@@ -406,20 +407,14 @@ function excluirViagem(id) {
         return;
     }
     
-    // Remover da lista local
     dados.viagens = dados.viagens.filter(v => v.id !== id);
     salvarDados();
     renderizarViagens();
-    
-    // Deletar do Supabase
     deletarViagemDoSupabase(id);
     
     console.log('🗑️ Viagem excluída localmente:', viagem.nome);
 }
 
-/**
- * Deletar viagem do Supabase
- */
 async function deletarViagemDoSupabase(viagemId) {
     if (!isOnline()) {
         console.warn('⚠️ Offline - A viagem será deletada quando online.');
@@ -451,7 +446,9 @@ async function deletarViagemDoSupabase(viagemId) {
     }
 }
 
-// ===== CRUD TRECHOS =====
+// ============================================================
+// 9. CRUD TRECHOS
+// ============================================================
 
 function criarTrecho(dadosTrecho) {
     if (!viagemAtual) {
@@ -523,7 +520,6 @@ function excluirTrecho(id) {
         return;
     }
     
-    // O confirm é chamado aqui apenas uma vez
     if (!confirm('Tem certeza que deseja excluir este trecho e todos os seus pontos e despesas?')) return;
     
     const trecho = viagem.trechos.find(t => t.id === id);
@@ -531,16 +527,11 @@ function excluirTrecho(id) {
     salvarDados();
     fecharModal('detalhesModal');
     renderizarTrechos();
-    
-    // Deletar do Supabase
     deletarTrechoDoSupabase(id);
     
     console.log('🗑️ Trecho excluído:', trecho ? trecho.cidadeAtual : id);
 }
 
-/**
- * Deletar trecho do Supabase
- */
 async function deletarTrechoDoSupabase(trechoId) {
     if (!isOnline() || !userAtual) return;
     
@@ -557,9 +548,9 @@ async function deletarTrechoDoSupabase(trechoId) {
     }
 }
 
-
-
-// ===== CRUD PONTOS =====
+// ============================================================
+// 10. CRUD PONTOS
+// ============================================================
 
 function criarPonto(trechoId, dadosPonto) {
     const viagem = dados.viagens.find(v => v.id === viagemAtual.id);
@@ -642,16 +633,11 @@ function excluirPonto(trechoId, pontoId) {
     trecho.pontos = trecho.pontos.filter(p => p.id !== pontoId);
     salvarDados();
     renderizarTrechos();
-    
-    // Deletar do Supabase - USANDO CHAMADA DIRETA
     deletarPontoDoSupabase(pontoId);
     
     console.log('🗑️ Ponto excluído:', ponto ? ponto.nome : pontoId);
 }
 
-/**
- * Deletar ponto do Supabase (CHAMADA DIRETA - SEM DEPENDER DO AUTH.JS)
- */
 async function deletarPontoDoSupabase(pontoId) {
     if (!isOnline() || !userAtual) return;
     
@@ -676,7 +662,9 @@ async function deletarPontoDoSupabase(pontoId) {
     }
 }
 
-// ===== CRUD DESPESAS =====
+// ============================================================
+// 11. CRUD DESPESAS
+// ============================================================
 
 function criarDespesa(trechoId, dadosDespesa) {
     const viagem = dados.viagens.find(v => v.id === viagemAtual.id);
@@ -757,16 +745,11 @@ function excluirDespesa(trechoId, despesaId) {
     trecho.despesas = trecho.despesas.filter(d => d.id !== despesaId);
     salvarDados();
     renderizarTrechos();
-    
-    // Deletar do Supabase
     deletarDespesaDoSupabase(despesaId);
     
     console.log('🗑️ Despesa excluída:', despesa ? despesa.descricao : despesaId);
 }
 
-/**
- * Deletar despesa do Supabase
- */
 async function deletarDespesaDoSupabase(despesaId) {
     if (!isOnline() || !userAtual) return;
     
@@ -783,7 +766,9 @@ async function deletarDespesaDoSupabase(despesaId) {
     }
 }
 
-// ===== RENDERIZAÇÃO - PÁGINA PRINCIPAL =====
+// ============================================================
+// 12. RENDERIZAÇÃO - PÁGINA PRINCIPAL
+// ============================================================
 
 function renderizarViagens() {
     const container = document.getElementById('viagensContainer');
@@ -808,7 +793,6 @@ function renderizarViagens() {
         return;
     }
 
-    // Ordenar por data de início
     const viagensOrdenadas = [...viagensFiltradas].sort((a, b) => {
         return new Date(a.dataInicio) - new Date(b.dataInicio);
     });
@@ -853,10 +837,8 @@ function renderizarViagens() {
         `;
     }).join('');
 
-    // Evento de clique nos cards (abrir roteiro)
     document.querySelectorAll('.viagem-card').forEach(card => {
         card.addEventListener('click', (e) => {
-            // Evitar abrir roteiro se clicou nos botões
             if (e.target.closest('.editar-viagem') || e.target.closest('.excluir-viagem')) {
                 return;
             }
@@ -865,7 +847,6 @@ function renderizarViagens() {
         });
     });
 
-    // Eventos de editar viagem
     document.querySelectorAll('.editar-viagem').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -877,7 +858,6 @@ function renderizarViagens() {
         });
     });
 
-    // Eventos de excluir viagem
     document.querySelectorAll('.excluir-viagem').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -887,7 +867,9 @@ function renderizarViagens() {
     });
 }
 
-// ===== NAVEGAÇÃO ENTRE PÁGINAS =====
+// ============================================================
+// 13. NAVEGAÇÃO ENTRE PÁGINAS
+// ============================================================
 
 function abrirRoteiro(viagemId) {
     const viagem = dados.viagens.find(v => v.id === viagemId);
@@ -897,11 +879,7 @@ function abrirRoteiro(viagemId) {
     }
 
     viagemAtual = viagem;
-    
-    // Salvar no localStorage para recuperar na outra página
     localStorage.setItem('viagemAtualId', viagemId);
-    
-    // Redirecionar para a página de roteiro
     window.location.href = 'roteiro.html';
 }
 
@@ -909,7 +887,9 @@ function voltarParaViagens() {
     window.location.href = 'index.html';
 }
 
-// ===== RENDERIZAÇÃO - ROTEIRO =====
+// ============================================================
+// 14. RENDERIZAÇÃO - ROTEIRO
+// ============================================================
 
 function renderizarTrechos() {
     if (!viagemAtual) return;
@@ -923,7 +903,6 @@ function renderizarTrechos() {
         return;
     }
 
-    // Atualizar informações da viagem no cabeçalho
     document.getElementById('headerTitle').textContent = viagem.nome;
     document.getElementById('viagemNome').textContent = viagem.nome;
     document.getElementById('viagemDestino').textContent = viagem.destino || 'Destino não definido';
@@ -950,7 +929,6 @@ function renderizarTrechos() {
         return;
     }
 
-    // Ordenar por data de check-in
     const trechosOrdenados = [...viagem.trechos].sort((a, b) => {
         return new Date(a.dataCheckin) - new Date(b.dataCheckin);
     });
@@ -958,10 +936,9 @@ function renderizarTrechos() {
     container.innerHTML = trechosOrdenados.map(trecho => {
         const totalPontos = trecho.pontos ? trecho.pontos.length : 0;
         const totalDespesas = trecho.despesas ? trecho.despesas.length : 0;
-        const totalGastos = calcularTotalGastos(trecho); // Só despesas reais + pontos
+        const totalGastos = calcularTotalGastos(trecho);
         const combustivelEstimado = calcularCombustivelEstimadoValor(trecho);
         const combustivelReal = calcularCombustivelReal(trecho);
-        // NÃO somamos o combustível estimado ao total
         const status = getStatusTrecho(trecho.dataCheckin, trecho.dataCheckout);
         const dias = calcularDias(trecho.dataCheckin, trecho.dataCheckout);
 
@@ -1012,7 +989,9 @@ function renderizarTrechos() {
     });
 }
 
-// ===== DETALHES DO TRECHO =====
+// ============================================================
+// 15. DETALHES DO TRECHO
+// ============================================================
 
 function abrirDetalhes(id) {
     const viagem = dados.viagens.find(v => v.id === viagemAtual.id);
@@ -1047,7 +1026,6 @@ function abrirDetalhes(id) {
         'finalizado': '✅ Finalizado'
     };
 
-    // Montar lista de pontos
     let pontosHtml = '';
     if (trecho.pontos && trecho.pontos.length) {
         pontosHtml = `<ul class="item-list">`;
@@ -1086,7 +1064,6 @@ function abrirDetalhes(id) {
         pontosHtml = `<p class="empty">Nenhum ponto cadastrado.</p>`;
     }
 
-    // Montar lista de despesas
     let despesasHtml = '';
     if (trecho.despesas && trecho.despesas.length) {
         despesasHtml = `<ul class="item-list">`;
@@ -1214,11 +1191,6 @@ function abrirDetalhes(id) {
                     editarPonto(trecho.id, id);
                     break;
                 case 'excluirPonto':
-                    // REMOVER este confirm, pois já existe na função excluirPonto
-                    // if (confirm('Excluir este ponto?')) {
-                    //     excluirPonto(trecho.id, id);
-                    //     abrirDetalhes(trecho.id);
-                    // }
                     excluirPonto(trecho.id, id);
                     abrirDetalhes(trecho.id);
                     break;
@@ -1241,7 +1213,9 @@ function abrirDetalhes(id) {
     modal.style.display = 'block';
 }
 
-// ===== FUNÇÕES DE MODAL =====
+// ============================================================
+// 16. FUNÇÕES DE MODAL
+// ============================================================
 
 function fecharModal(id) {
     const modal = document.getElementById(id);
@@ -1475,12 +1449,13 @@ function editarDespesa(trechoId, despesaId) {
     }
 }
 
-// ===== INICIALIZAÇÃO DAS PÁGINAS =====
+// ============================================================
+// 17. INICIALIZAÇÃO DAS PÁGINAS
+// ============================================================
 
 function initPaginaViagens() {
     renderizarViagens();
 
-    // Configurações
     const btnConfig = document.getElementById('btnConfig');
     if (btnConfig) {
         btnConfig.addEventListener('click', abrirModalConfig);
@@ -1488,7 +1463,7 @@ function initPaginaViagens() {
 
     const btnSalvarConfig = document.getElementById('btnSalvarConfig');
     if (btnSalvarConfig) {
-        btnSalvarConfig.addEventListener('click', () => {
+        btnSalvarConfig.addEventListener('click', async () => {
             const consumo = parseFloat(document.getElementById('consumoMedio').value);
             const preco = parseFloat(document.getElementById('precoCombustivel').value);
 
@@ -1496,6 +1471,7 @@ function initPaginaViagens() {
                 dados.config.consumoMedio = consumo;
                 dados.config.precoCombustivel = preco;
                 salvarDados();
+                await syncConfigToSupabase();
                 fecharModal('configModal');
                 renderizarViagens();
                 alert('Configurações salvas com sucesso!');
@@ -1505,7 +1481,6 @@ function initPaginaViagens() {
         });
     }
 
-    // Botão de sincronização
     const btnSync = document.getElementById('btnSync');
     if (btnSync) {
         btnSync.addEventListener('click', async function() {
@@ -1517,7 +1492,6 @@ function initPaginaViagens() {
         });
     }
 
-    // Nova viagem
     const btnNovaViagem = document.getElementById('btnNovaViagem');
     if (btnNovaViagem) {
         btnNovaViagem.addEventListener('click', () => {
@@ -1525,7 +1499,6 @@ function initPaginaViagens() {
         });
     }
 
-    // Formulário de Viagem
     const formViagem = document.getElementById('formViagem');
     if (formViagem) {
         formViagem.addEventListener('submit', (e) => {
@@ -1561,7 +1534,6 @@ function initPaginaViagens() {
         });
     }
 
-    // Filtros
     document.querySelectorAll('.filtro-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
@@ -1571,7 +1543,6 @@ function initPaginaViagens() {
         });
     });
 
-    // Fechar modais
     document.querySelectorAll('.modal .close').forEach(btn => {
         btn.addEventListener('click', () => {
             btn.closest('.modal').style.display = 'none';
@@ -1589,7 +1560,6 @@ function initPaginaViagens() {
 }
 
 function initPaginaRoteiro() {
-    // Recuperar viagem atual
     const viagemId = localStorage.getItem('viagemAtualId');
     if (!viagemId) {
         alert('Nenhuma viagem selecionada!');
@@ -1605,16 +1575,13 @@ function initPaginaRoteiro() {
         return;
     }
 
-    // Renderizar trechos
     renderizarTrechos();
 
-    // Botão voltar
     const btnVoltar = document.getElementById('btnVoltar');
     if (btnVoltar) {
         btnVoltar.addEventListener('click', voltarParaViagens);
     }
 
-    // Configurações
     const btnConfigRoteiro = document.getElementById('btnConfigRoteiro');
     if (btnConfigRoteiro) {
         btnConfigRoteiro.addEventListener('click', abrirModalConfig);
@@ -1622,7 +1589,7 @@ function initPaginaRoteiro() {
 
     const btnSalvarConfig = document.getElementById('btnSalvarConfig');
     if (btnSalvarConfig) {
-        btnSalvarConfig.addEventListener('click', () => {
+        btnSalvarConfig.addEventListener('click', async () => {
             const consumo = parseFloat(document.getElementById('consumoMedio').value);
             const preco = parseFloat(document.getElementById('precoCombustivel').value);
 
@@ -1630,6 +1597,7 @@ function initPaginaRoteiro() {
                 dados.config.consumoMedio = consumo;
                 dados.config.precoCombustivel = preco;
                 salvarDados();
+                await syncConfigToSupabase();
                 fecharModal('configModal');
                 renderizarTrechos();
                 alert('Configurações salvas com sucesso!');
@@ -1639,7 +1607,6 @@ function initPaginaRoteiro() {
         });
     }
 
-    // Botão de sincronização no roteiro
     const btnSyncRoteiro = document.getElementById('btnSyncRoteiro');
     if (btnSyncRoteiro) {
         btnSyncRoteiro.addEventListener('click', async function() {
@@ -1651,7 +1618,6 @@ function initPaginaRoteiro() {
         });
     }
 
-    // Novo trecho
     const btnNovoTrecho = document.getElementById('btnNovoTrecho');
     if (btnNovoTrecho) {
         btnNovoTrecho.addEventListener('click', () => {
@@ -1659,13 +1625,11 @@ function initPaginaRoteiro() {
         });
     }
 
-    // Resumo da viagem
     const btnResumoViagem = document.getElementById('btnResumoViagem');
     if (btnResumoViagem) {
         btnResumoViagem.addEventListener('click', abrirResumoViagem);
     }
 
-    // Formulário de Trecho
     const formTrecho = document.getElementById('formTrecho');
     if (formTrecho) {
         formTrecho.addEventListener('submit', (e) => {
@@ -1703,7 +1667,6 @@ function initPaginaRoteiro() {
         });
     }
 
-    // Formulário de Ponto
     const formPonto = document.getElementById('formPonto');
     if (formPonto) {
         formPonto.addEventListener('submit', (e) => {
@@ -1744,7 +1707,6 @@ function initPaginaRoteiro() {
         });
     }
 
-    // Formulário de Despesa
     const formDespesa = document.getElementById('formDespesa');
     if (formDespesa) {
         formDespesa.addEventListener('submit', (e) => {
@@ -1776,7 +1738,6 @@ function initPaginaRoteiro() {
         });
     }
 
-    // Fechar modais
     document.querySelectorAll('.modal .close').forEach(btn => {
         btn.addEventListener('click', () => {
             btn.closest('.modal').style.display = 'none';
@@ -1794,12 +1755,13 @@ function initPaginaRoteiro() {
     console.log(`📍 ${viagemAtual.trechos ? viagemAtual.trechos.length : 0} trechos carregados`);
 }
 
-// ===== INICIALIZAÇÃO PRINCIPAL =====
+// ============================================================
+// 18. INICIALIZAÇÃO PRINCIPAL
+// ============================================================
 
 async function initApp() {
     console.log('🚀 Inicializando Buscuz...');
     
-    // Verificar autenticação
     const authResult = await window.checkAuthAndRedirect();
     
     if (!authResult || !authResult.authenticated) {
@@ -1807,17 +1769,13 @@ async function initApp() {
         return;
     }
     
-    // Salvar usuário atual
     userAtual = authResult.user;
     console.log('✅ Usuário autenticado:', userAtual.email);
     
-    // Carregar dados locais
     carregarDados();
-    
-    // Tentar carregar do Supabase
+    await carregarConfiguracoes();
     await syncDataFromSupabase();
     
-    // Inicializar conforme a página
     if (document.getElementById('viagensContainer')) {
         console.log('📋 Página de viagens detectada');
         initPaginaViagens();
@@ -1826,7 +1784,6 @@ async function initApp() {
         initPaginaRoteiro();
     }
     
-    // Atualizar informações do usuário
     atualizarInfoUsuario(authResult.user);
 }
 
@@ -1843,9 +1800,10 @@ function atualizarInfoUsuario(user) {
     }
 }
 
-// ===== EVENTOS DE CONEXÃO =====
+// ============================================================
+// 19. EVENTOS DE CONEXÃO
+// ============================================================
 
-// Sincronizar quando voltar online
 window.addEventListener('online', function() {
     console.log('📶 Conexão restaurada! Sincronizando dados...');
     if (userAtual) {
@@ -1853,17 +1811,17 @@ window.addEventListener('online', function() {
     }
 });
 
-// Sincronizar periodicamente (a cada 5 minutos)
 setInterval(function() {
     if (userAtual && isOnline()) {
         console.log('🔄 Sincronização automática...');
         syncDataToSupabase();
     }
-}, 300000); // 5 minutos
+}, 300000);
 
-// ===== INICIAR APLICAÇÃO =====
+// ============================================================
+// 20. INICIAR APLICAÇÃO
+// ============================================================
 
-// Iniciar quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', initApp);
 
 console.log('📦 Buscuz - App carregado!');

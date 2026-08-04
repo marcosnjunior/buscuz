@@ -408,6 +408,78 @@ if (typeof window.BuscuzAuth === 'undefined') {
         }
     };
 
+    // ===== FUNÇÕES DE CONFIGURAÇÃO =====
+
+/**
+ * Salvar configurações do usuário no Supabase
+ */
+window.BuscuzAuth.saveConfig = async function(userId, configData) {
+    try {
+        console.log('💾 Salvando configurações...');
+        
+        const config = {
+            user_id: userId,
+            consumo_medio: configData.consumoMedio || 10,
+            preco_combustivel: configData.precoCombustivel || 5.50,
+            updated_at: new Date().toISOString()
+        };
+        
+        const { error } = await supabaseClient
+            .from('config')
+            .upsert(config, { onConflict: 'user_id' });
+        
+        if (error) throw error;
+        
+        console.log('✅ Configurações salvas com sucesso!');
+        return { success: true };
+    } catch (error) {
+        console.error('❌ Erro ao salvar configurações:', error.message);
+        return { success: false, error: error.message };
+    }
+};
+
+    /**
+     * Carregar configurações do usuário do Supabase
+     */
+    window.BuscuzAuth.loadConfig = async function(userId) {
+        try {
+            console.log('📥 Carregando configurações...');
+            
+            const { data, error } = await supabaseClient
+                .from('config')
+                .select('*')
+                .eq('user_id', userId)
+                .maybeSingle();  // ← USAR maybeSingle() em vez de single()
+            
+            // Verificar se não há dados (configuração não existe)
+            if (!data && error && error.code === 'PGRST116') {
+                console.log('📭 Nenhuma configuração encontrada, usando padrão');
+                return { 
+                    success: true, 
+                    config: { consumoMedio: 10, precoCombustivel: 5.50 } 
+                };
+            }
+            
+            if (error) throw error;
+            
+            console.log('✅ Configurações carregadas!');
+            return { 
+                success: true, 
+                config: {
+                    consumoMedio: data?.consumo_medio || 10,
+                    precoCombustivel: data?.preco_combustivel || 5.50
+                }
+            };
+        } catch (error) {
+            console.error('❌ Erro ao carregar configurações:', error.message);
+            return { 
+                success: false, 
+                error: error.message,
+                config: { consumoMedio: 10, precoCombustivel: 5.50 }
+            };
+        }
+    };
+
     // ===== FUNÇÕES DE SINCRONIZAÇÃO =====
 
     window.BuscuzAuth.syncData = async function(userId, viagens) {
