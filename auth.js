@@ -119,7 +119,6 @@ if (typeof window.BuscuzAuth === 'undefined') {
      * Página de Redefinição de Senha
      */
     window.handleResetPassword = async function(event) {
-        // Prevenir comportamento padrão do form
         if (event) {
             event.preventDefault();
             event.stopPropagation();
@@ -135,16 +134,17 @@ if (typeof window.BuscuzAuth === 'undefined') {
         // Limpar mensagens anteriores
         errorElement.style.display = 'none';
         successElement.style.display = 'none';
+        errorElement.textContent = '';
         
         // Validar senhas
         if (newPassword !== confirmPassword) {
-            errorElement.textContent = 'As senhas não coincidem.';
+            errorElement.textContent = '❌ As senhas não coincidem.';
             errorElement.style.display = 'block';
             return;
         }
         
         if (newPassword.length < 6) {
-            errorElement.textContent = 'A senha deve ter pelo menos 6 caracteres.';
+            errorElement.textContent = '❌ A senha deve ter pelo menos 6 caracteres.';
             errorElement.style.display = 'block';
             return;
         }
@@ -163,11 +163,17 @@ if (typeof window.BuscuzAuth === 'undefined') {
             successElement.style.display = 'block';
             document.getElementById('newPassword').value = '';
             document.getElementById('confirmPassword').value = '';
+            
+            // Limpar URL dos parâmetros
+            if (window.history && window.history.replaceState) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            
             setTimeout(() => {
                 window.location.href = 'login.html';
             }, 3000);
         } else {
-            errorElement.textContent = result.error || 'Erro ao redefinir senha. Tente novamente.';
+            errorElement.textContent = '❌ ' + (result.error || 'Erro ao redefinir senha. Tente novamente.');
             errorElement.style.display = 'block';
         }
     };
@@ -228,16 +234,74 @@ if (typeof window.BuscuzAuth === 'undefined') {
     window.BuscuzAuth.resetPassword = async function(newPassword) {
         try {
             console.log('🔑 Redefinindo senha...');
-            const { error } = await supabaseClient.auth.updateUser({
+            
+            // Verificar se há uma sessão ativa
+            const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+            
+            if (sessionError) {
+                console.error('❌ Erro ao verificar sessão:', sessionError);
+                return { success: false, error: 'Sessão não encontrada. O link de recuperação pode ter expirado.' };
+            }
+            
+            if (!session) {
+                console.warn('⚠️ Nenhuma sessão ativa encontrada.');
+                
+                // Tentar recuperar da URL (token hash)
+                const urlParams = new URLSearchParams(window.location.search);
+                const tokenHash = urlParams.get('token_hash');
+                const type = urlParams.get('type');
+                
+                if (tokenHash && type === 'recovery') {
+                    console.log('🔑 Token de recuperação encontrado na URL.');
+                    
+                    // Verificar o token
+                    const { data: verifyData, error: verifyError } = await supabaseClient.auth.verifyOtp({
+                        token_hash: tokenHash,
+                        type: 'recovery'
+                    });
+                    
+                    if (verifyError) {
+                        console.error('❌ Erro ao verificar token:', verifyError);
+                        return { success: false, error: 'Link de recuperação inválido ou expirado.' };
+                    }
+                    
+                    console.log('✅ Token verificado com sucesso!');
+                    
+                    // Agora atualizar a senha
+                    const { error: updateError } = await supabaseClient.auth.updateUser({
+                        password: newPassword
+                    });
+                    
+                    if (updateError) throw updateError;
+                    
+                    console.log('✅ Senha redefinida com sucesso!');
+                    return { success: true };
+                } else {
+                    return { success: false, error: 'Link de recuperação inválido. Solicite um novo link.' };
+                }
+            }
+            
+            // Se tem sessão, atualizar diretamente
+            const { error: updateError } = await supabaseClient.auth.updateUser({
                 password: newPassword
             });
             
-            if (error) throw error;
-            console.log('✅ Senha redefinida!');
+            if (updateError) throw updateError;
+            
+            console.log('✅ Senha redefinida com sucesso!');
             return { success: true };
         } catch (error) {
             console.error('❌ Erro ao redefinir senha:', error.message);
-            return { success: false, error: error.message };
+            
+            // Mensagens amigáveis
+            let errorMsg = error.message;
+            if (errorMsg.includes('session')) {
+                errorMsg = 'Sessão expirada. Solicite um novo link de recuperação.';
+            } else if (errorMsg.includes('token')) {
+                errorMsg = 'Link de recuperação inválido ou expirado. Solicite um novo.';
+            }
+            
+            return { success: false, error: errorMsg };
         }
     };
 
