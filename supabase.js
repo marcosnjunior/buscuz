@@ -2,11 +2,25 @@
 // Supabase Configuration
 // ============================================================
 
-const SUPABASE_URL = 'https://isatgbkemaahqaoaruwz.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_KX9DHtRNFOXcNhBV5qfLsw_No1BYeTq';
+// Verificar se já existe para evitar duplicação
+if (typeof window.supabaseClient === 'undefined') {
+    
+    const SUPABASE_URL = 'https://isatgbkemaahqaoaruwz.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_KX9DHtRNFOXcNhBV5qfLsw_No1BYeTq';
 
-// Criar cliente Supabase
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Criar cliente Supabase
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    // Expor globalmente
+    window.supabaseClient = supabaseClient;
+    window.SUPABASE_URL = SUPABASE_URL;
+    window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
+
+    console.log('✅ Supabase inicializado');
+}
+
+// Usar o cliente existente
+const supabase = window.supabaseClient;
 
 // ===== FUNÇÕES DE AUTENTICAÇÃO =====
 
