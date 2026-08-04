@@ -68,6 +68,110 @@ if (typeof window.BuscuzAuth === 'undefined') {
         }
     };
 
+    // ===== FUNÇÕES DE RECUPERAÇÃO DE SENHA (GLOBAIS) =====
+
+    /**
+     * Página de Recuperação de Senha
+     */
+    window.handleForgotPassword = async function(event) {
+        // Prevenir comportamento padrão do form
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
+        const email = document.getElementById('email').value;
+        const errorElement = document.getElementById('forgotError');
+        const successElement = document.getElementById('forgotSuccess');
+        const loadingElement = document.getElementById('forgotLoading');
+        const button = document.getElementById('forgotButton');
+        
+        // Limpar mensagens anteriores
+        errorElement.style.display = 'none';
+        successElement.style.display = 'none';
+        
+        if (!email || !email.includes('@')) {
+            errorElement.textContent = 'Por favor, informe um e-mail válido.';
+            errorElement.style.display = 'block';
+            return;
+        }
+        
+        // Mostrar loading
+        button.disabled = true;
+        loadingElement.style.display = 'inline';
+        
+        const result = await window.BuscuzAuth.forgotPassword(email);
+        
+        // Esconder loading
+        button.disabled = false;
+        loadingElement.style.display = 'none';
+        
+        if (result.success) {
+            successElement.style.display = 'block';
+            document.getElementById('email').value = '';
+        } else {
+            errorElement.textContent = result.error || 'Erro ao enviar e-mail. Tente novamente.';
+            errorElement.style.display = 'block';
+        }
+    };
+
+    /**
+     * Página de Redefinição de Senha
+     */
+    window.handleResetPassword = async function(event) {
+        // Prevenir comportamento padrão do form
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        const errorElement = document.getElementById('resetError');
+        const successElement = document.getElementById('resetSuccess');
+        const loadingElement = document.getElementById('resetLoading');
+        const button = document.getElementById('resetButton');
+        
+        // Limpar mensagens anteriores
+        errorElement.style.display = 'none';
+        successElement.style.display = 'none';
+        
+        // Validar senhas
+        if (newPassword !== confirmPassword) {
+            errorElement.textContent = 'As senhas não coincidem.';
+            errorElement.style.display = 'block';
+            return;
+        }
+        
+        if (newPassword.length < 6) {
+            errorElement.textContent = 'A senha deve ter pelo menos 6 caracteres.';
+            errorElement.style.display = 'block';
+            return;
+        }
+        
+        // Mostrar loading
+        button.disabled = true;
+        loadingElement.style.display = 'inline';
+        
+        const result = await window.BuscuzAuth.resetPassword(newPassword);
+        
+        // Esconder loading
+        button.disabled = false;
+        loadingElement.style.display = 'none';
+        
+        if (result.success) {
+            successElement.style.display = 'block';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+            setTimeout(() => {
+                window.location.href = 'login.html';
+            }, 3000);
+        } else {
+            errorElement.textContent = result.error || 'Erro ao redefinir senha. Tente novamente.';
+            errorElement.style.display = 'block';
+        }
+    };
+
     /**
      * Cadastro de novo usuário
      */
