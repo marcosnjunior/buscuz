@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+    <title>Buscuz - Roteiro da Viagem</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+</head>
+<body>
+    <div id="app">
+        <!-- Cabeçalho -->
+        <header>
+            <button id="btnVoltar" class="icon-btn"><i class="fas fa-arrow-left"></i></button>
+            <h1 id="headerTitle"><i class="fas fa-route"></i> Roteiro</h1>
+            <button id="btnConfigRoteiro" class="icon-btn"><i class="fas fa-cog"></i></button>
+        </header>
+
+        <!-- Informações da Viagem -->
+        <div id="viagemInfo" class="viagem-info">
+            <h2 id="viagemNome"></h2>
+            <div class="viagem-detalhes">
+                <span><i class="fas fa-map-pin"></i> <span id="viagemDestino"></span></span>
+                <span><i class="fas fa-calendar-alt"></i> <span id="viagemPeriodo"></span></span>
+                <span class="status-badge" id="viagemStatus"></span>
+            </div>
+            <p id="viagemDescricao" class="viagem-descricao"></p>
+        </div>
+
+        <!-- Tela Principal -->
+        <main id="mainScreen">
+            <div class="toolbar">
+                <button id="btnNovoTrecho" class="primary-btn"><i class="fas fa-plus"></i> Novo Trecho</button>
+                <button id="btnResumoViagem" class="secondary-btn"><i class="fas fa-chart-pie"></i> Resumo</button>
+            </div>
+            <div id="trechosContainer" class="trechos-grid">
+                <!-- Cards serão injetados aqui -->
+            </div>
+        </main>
+
+        <!-- Modal de Configuração -->
+        <div id="configModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2><i class="fas fa-sliders-h"></i> Configurações</h2>
+                <div class="form-group">
+                    <label>Consumo médio (km/l)</label>
+                    <input type="number" id="consumoMedio" step="0.1" min="0" />
+                </div>
+                <div class="form-group">
+                    <label>Preço do combustível (R$/l)</label>
+                    <input type="number" id="precoCombustivel" step="0.01" min="0" />
+                </div>
+                <button id="btnSalvarConfig" class="primary-btn">Salvar</button>
+            </div>
+        </div>
+
+        <!-- Modal de Cadastro de Trecho -->
+        <div id="trechoModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2 id="modalTrechoTitle"><i class="fas fa-road"></i> Novo Trecho</h2>
+                <form id="formTrecho">
+                    <input type="hidden" id="trechoId" />
+                    <div class="form-group">
+                        <label>Cidade atual</label>
+                        <input type="text" id="cidadeAtual" required placeholder="Ex: São Paulo" />
+                    </div>
+                    <div class="form-group">
+                        <label>Data de Check-in</label>
+                        <input type="date" id="dataCheckin" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Data de Check-out</label>
+                        <input type="date" id="dataCheckout" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Próxima cidade</label>
+                        <input type="text" id="proximaCidade" required placeholder="Ex: Rio de Janeiro" />
+                    </div>
+                    <div class="form-group">
+                        <label>Distância (km)</label>
+                        <input type="number" id="distancia" step="0.1" min="0" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Tempo estimado de deslocamento (horas)</label>
+                        <input type="number" id="tempoEstimado" step="0.1" min="0" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Odômetro atual (km)</label>
+                        <input type="number" id="odometro" step="0.1" min="0" />
+                    </div>
+                    <button type="submit" class="primary-btn">Salvar Trecho</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal de Detalhes do Trecho -->
+        <div id="detalhesModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <div id="detalhesContent">
+                    <!-- Conteúdo dinâmico -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Ponto Turístico -->
+        <div id="pontoModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2><i class="fas fa-map-marker-alt"></i> Ponto Turístico</h2>
+                <form id="formPonto">
+                    <input type="hidden" id="pontoId" />
+                    <input type="hidden" id="pontoTrechoId" />
+                    <div class="form-group">
+                        <label>Nome do ponto *</label>
+                        <input type="text" id="pontoNome" required placeholder="Ex: Cristo Redentor" />
+                    </div>
+                    <div class="form-group">
+                        <label>URL do Google Maps</label>
+                        <input type="url" id="pontoLocalizacao" placeholder="https://www.google.com/maps/place/..." />
+                        <small style="color: #7f8c8d; font-size: 0.8rem;">
+                            <i class="fas fa-info-circle"></i> 
+                            Opcional - Cole o link do Google Maps para a localização exata
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label>Data da visita</label>
+                        <input type="date" id="pontoData" />
+                    </div>
+                    <div class="form-group">
+                        <label>Custo da entrada (R$) *</label>
+                        <input type="number" id="pontoCusto" step="0.01" min="0" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Observações</label>
+                        <textarea id="pontoObservacoes" rows="2" placeholder="Dicas, horários de funcionamento..."></textarea>
+                    </div>
+                    <button type="submit" class="primary-btn">Salvar Ponto</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal de Despesa -->
+        <div id="despesaModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2><i class="fas fa-receipt"></i> Despesa do Trecho</h2>
+                <form id="formDespesa">
+                    <input type="hidden" id="despesaId" />
+                    <input type="hidden" id="despesaTrechoId" />
+                    <div class="form-group">
+                        <label>Descrição</label>
+                        <input type="text" id="despesaDescricao" required placeholder="Ex: Pedágio, balsa..." />
+                    </div>
+                    <div class="form-group">
+                        <label>Valor (R$)</label>
+                        <input type="number" id="despesaValor" step="0.01" min="0" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Data</label>
+                        <input type="date" id="despesaData" />
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo</label>
+                        <select id="despesaTipo">
+                            <option value="pedagio">Pedágio</option>
+                            <option value="balsa">Balsa</option>
+                            <option value="abastecimento">Abastecimento</option>
+                            <option value="alimentacao">Alimentação</option>
+                            <option value="entrada">Entrada</option>
+                            <option value="hospedagem">Hospedagem</option>
+                            <option value="outro">Outro</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="primary-btn">Salvar Despesa</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal de Resumo da Viagem -->
+        <div id="resumoModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2><i class="fas fa-chart-pie"></i> Resumo da Viagem</h2>
+                <div id="resumoContent">
+                    <!-- Conteúdo dinâmico -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

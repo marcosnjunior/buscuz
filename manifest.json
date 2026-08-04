@@ -1,0 +1,16 @@
+{
+    "name": "Buscuz",
+    "short_name": "Buscuz",
+    "description": "Sistema de roteiros de viagem",
+    "start_url": "index.html",
+    "display": "standalone",
+    "background_color": "#f5f7fa",
+    "theme_color": "#2c3e50",
+    "icons": [
+      {
+        "src": "icon.png",
+        "sizes": "192x192",
+        "type": "image/png"
+      }
+    ]
+  }
