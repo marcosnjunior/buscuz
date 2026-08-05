@@ -1474,7 +1474,7 @@ function initPaginaViagens() {
                 await syncConfigToSupabase();
                 fecharModal('configModal');
                 renderizarViagens();
-                alert('Configurações salvas com sucesso!');
+                //alert('Configurações salvas com sucesso!');
             } else {
                 alert('Por favor, insira valores válidos (maiores que zero).');
             }
