@@ -1600,7 +1600,7 @@ function initPaginaRoteiro() {
                 await syncConfigToSupabase();
                 fecharModal('configModal');
                 renderizarTrechos();
-                alert('Configurações salvas com sucesso!');
+                //alert('Configurações salvas com sucesso!');
             } else {
                 alert('Por favor, insira valores válidos (maiores que zero).');
             }
