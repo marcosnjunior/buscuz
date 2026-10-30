@@ -1,16 +1,31 @@
 {
-    "name": "Buscuz",
-    "short_name": "Buscuz",
-    "description": "Sistema de roteiros de viagem",
-    "start_url": "index.html",
-    "display": "standalone",
-    "background_color": "#f5f7fa",
-    "theme_color": "#2c3e50",
-    "icons": [
-      {
-        "src": "icon.png",
-        "sizes": "192x192",
-        "type": "image/png"
-      }
-    ]
-  }
+  "name": "Família Buscuz",
+  "short_name": "Buscuz",
+  "description": "Programar e controlar despesas em viagens de carro",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#E7F3FF",
+  "theme_color": "#1C9FFF",
+  "icons": [
+    {
+      "src": "imagens/icone.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "imagens/icone.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "imagens/icone.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

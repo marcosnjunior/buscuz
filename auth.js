@@ -3,6 +3,70 @@
 // Versão Unificada - Sem conflitos
 // ============================================================
 
+function lerSessaoArmazenada() {
+    try {
+        const stored = localStorage.getItem('supabase_session');
+        if (!stored) return null;
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.user) return parsed;
+    } catch (e) {
+        localStorage.removeItem('supabase_session');
+    }
+    return null;
+}
+
+function falhaDeRede(error) {
+    if (!navigator.onLine) return true;
+    const msg = ((error && (error.message || error.name)) || '').toLowerCase();
+    return msg.includes('fetch') || msg.includes('network') || msg.includes('offline') || msg.includes('failed');
+}
+
+// SDK ausente (primeira abertura offline, antes do cache): ainda dá para ver os dados locais.
+if (typeof supabase === 'undefined' && typeof window.supabase === 'undefined') {
+    console.error('SDK do Supabase não carregado');
+    if (typeof window.BuscuzAuth === 'undefined') {
+        window.BuscuzAuth = {
+            checkAuth: async function() {
+                const stored = lerSessaoArmazenada();
+                if (stored && !navigator.onLine) {
+                    return { authenticated: true, user: stored.user, offline: true };
+                }
+                return { authenticated: false, offline: !navigator.onLine };
+            },
+            syncData: async function() { return { success: false, error: 'Sem conexão' }; },
+            loadData: async function() { return { success: false, error: 'Sem conexão' }; },
+            saveConfig: async function() { return { success: false, error: 'Sem conexão' }; },
+            loadConfig: async function() { return { success: false, error: 'Sem conexão' }; },
+            deleteViagem: async function() { return { success: false, error: 'Sem conexão' }; },
+            deleteTrecho: async function() { return { success: false, error: 'Sem conexão' }; },
+            deletePonto: async function() { return { success: false, error: 'Sem conexão' }; },
+            deleteDespesa: async function() { return { success: false, error: 'Sem conexão' }; }
+        };
+
+        window.handleLogout = async function() {
+            localStorage.removeItem('supabase_session');
+            localStorage.removeItem('buscuz_data');
+            window.location.href = 'login.html';
+        };
+
+        window.checkAuthAndRedirect = async function() {
+            const result = await window.BuscuzAuth.checkAuth();
+            const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+            const publicPages = ['login.html', 'signup.html', 'forgot-password.html', 'reset-password.html', ''];
+
+            if (!result.authenticated && !publicPages.includes(currentPage)) {
+                window.location.href = 'login.html';
+                return false;
+            }
+            if (result.authenticated && publicPages.includes(currentPage)) {
+                window.location.href = 'index.html';
+                return false;
+            }
+            return result;
+        };
+    }
+}
+
 // Verificar se já foi carregado
 if (typeof window.BuscuzAuth === 'undefined') {
 
@@ -12,13 +76,6 @@ if (typeof window.BuscuzAuth === 'undefined') {
     const SUPABASE_ANON_KEY = 'sb_publishable_KX9DHtRNFOXcNhBV5qfLsw_No1BYeTq';
 
     // ===== INICIALIZAR SUPABASE =====
-    // Verificar se o SDK está disponível
-    if (typeof supabase === 'undefined' && typeof window.supabase === 'undefined') {
-        console.error('❌ SDK do Supabase não carregado!');
-        throw new Error('SDK do Supabase não disponível');
-    }
-
-    // Usar o cliente existente ou criar novo
     const _supabase = window.supabase || supabase;
     const supabaseClient = _supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -329,37 +386,28 @@ if (typeof window.BuscuzAuth === 'undefined') {
      * Verificar autenticação
      */
     window.BuscuzAuth.checkAuth = async function() {
+        if (!navigator.onLine) {
+            const stored = lerSessaoArmazenada();
+            if (stored) return { authenticated: true, user: stored.user, offline: true };
+            return { authenticated: false, offline: true };
+        }
+
         try {
-            // Tentar obter sessão atual
             const { data: { session }, error } = await supabaseClient.auth.getSession();
-            
             if (error) throw error;
-            
+
             if (session) {
                 localStorage.setItem('supabase_session', JSON.stringify(session));
                 return { authenticated: true, user: session.user };
             }
-            
-            // Tentar recuperar do localStorage
-            const storedSession = localStorage.getItem('supabase_session');
-            if (storedSession) {
-                try {
-                    const parsed = JSON.parse(storedSession);
-                    if (parsed && parsed.access_token) {
-                        // Verificar se o token ainda é válido
-                        const { data: { session: validSession } } = await supabaseClient.auth.getSession();
-                        if (validSession) {
-                            return { authenticated: true, user: validSession.user };
-                        }
-                    }
-                } catch (e) {
-                    console.warn('Sessão armazenada inválida');
-                    localStorage.removeItem('supabase_session');
-                }
-            }
-            
+
             return { authenticated: false };
         } catch (error) {
+            const stored = lerSessaoArmazenada();
+            if (falhaDeRede(error) && stored) {
+                console.warn('Rede indisponível. Usando sessão local.');
+                return { authenticated: true, user: stored.user, offline: true };
+            }
             console.error('❌ Erro ao verificar autenticação:', error.message);
             return { authenticated: false, error: error.message };
         }
@@ -836,8 +884,19 @@ window.BuscuzAuth.saveConfig = async function(userId, configData) {
             return result;
         } catch (error) {
             console.error('❌ Erro ao verificar autenticação:', error);
-            window.location.href = 'login.html';
-            return false;
+            const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+            const publicPages = ['login.html', 'signup.html', 'forgot-password.html', 'reset-password.html', ''];
+            const stored = lerSessaoArmazenada();
+
+            if (stored && (falhaDeRede(error) || !navigator.onLine) && !publicPages.includes(currentPage)) {
+                return { authenticated: true, user: stored.user, offline: true };
+            }
+
+            if (!publicPages.includes(currentPage)) {
+                window.location.href = 'login.html';
+                return false;
+            }
+            return { authenticated: false };
         }
     };
 

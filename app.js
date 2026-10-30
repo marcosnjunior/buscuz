@@ -8,6 +8,13 @@
 // ============================================================
 const STORAGE_KEY = 'buscuz_data';
 const CONFIG_KEY = 'buscuz_config';
+const SYNC_PREF_KEY = 'buscuz_sync_pref';
+const DELETES_KEY = 'buscuz_pending_deletes';
+const DIRTY_KEY = 'buscuz_dirty';
+const CONFIG_DIRTY_KEY = 'buscuz_config_dirty';
+const LAST_SYNC_KEY = 'buscuz_last_sync';
+const SYNC_INTERVAL_PADRAO = 300000;
+const SYNC_INTERVALOS = [0, 60000, 300000, 900000, 1800000, 3600000];
 
 // ============================================================
 // 2. ESTADO GLOBAL
@@ -27,6 +34,10 @@ let despesaEmEdicao = null;
 let filtroAtual = 'todas';
 let viagemEmEdicao = null;
 let userAtual = null; // Usuário logado
+let syncEmAndamento = false;
+let syncVersao = 0;
+let syncTimer = null;
+let syncFalhou = false;
 
 // ============================================================
 // 3. FUNÇÕES DE PERSISTÊNCIA
@@ -67,16 +78,110 @@ function isOnline() {
     return navigator.onLine;
 }
 
-function showSyncStatus(message, isSuccess = true) {
-    const statusEl = document.getElementById('syncStatus');
-    if (statusEl) {
-        statusEl.textContent = message;
-        statusEl.className = isSuccess ? 'sync-success' : 'sync-error';
-        statusEl.style.display = 'block';
-        setTimeout(() => {
-            statusEl.style.display = 'none';
-        }, 3000);
+function lerIntervaloSync() {
+    const raw = localStorage.getItem(SYNC_PREF_KEY);
+    if (raw === null || raw === '') return SYNC_INTERVAL_PADRAO;
+    const n = parseInt(raw, 10);
+    return SYNC_INTERVALOS.includes(n) ? n : SYNC_INTERVAL_PADRAO;
+}
+
+function salvarIntervaloSync(ms) {
+    const valor = SYNC_INTERVALOS.includes(ms) ? ms : SYNC_INTERVAL_PADRAO;
+    localStorage.setItem(SYNC_PREF_KEY, String(valor));
+}
+
+function lerFilaExclusoes() {
+    try {
+        const lista = JSON.parse(localStorage.getItem(DELETES_KEY) || '[]');
+        return Array.isArray(lista) ? lista : [];
+    } catch (e) {
+        return [];
     }
+}
+
+function temPendencia() {
+    return localStorage.getItem(DIRTY_KEY) === '1'
+        || localStorage.getItem(CONFIG_DIRTY_KEY) === '1'
+        || lerFilaExclusoes().length > 0;
+}
+
+function marcarSujo() {
+    syncVersao += 1;
+    localStorage.setItem(DIRTY_KEY, '1');
+    syncFalhou = false;
+    atualizarChipSync();
+}
+
+function marcarConfigPendente() {
+    localStorage.setItem(CONFIG_DIRTY_KEY, '1');
+    syncFalhou = false;
+    atualizarChipSync();
+}
+
+function enfileirarExclusao(tipo, id) {
+    const fila = lerFilaExclusoes();
+    if (!fila.some(item => item.tipo === tipo && String(item.id) === String(id))) {
+        fila.push({ tipo, id });
+        localStorage.setItem(DELETES_KEY, JSON.stringify(fila));
+    }
+    marcarSujo();
+}
+
+function formatarHoraSync(iso) {
+    try {
+        return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+        return '';
+    }
+}
+
+function textoUltimaSync() {
+    const last = localStorage.getItem(LAST_SYNC_KEY);
+    if (!last) return 'Ainda não sincronizado neste aparelho.';
+    return 'Última sincronização às ' + formatarHoraSync(last) + '.';
+}
+
+function atualizarChipSync(estado) {
+    const el = document.getElementById('syncStatus');
+    if (!el) return;
+
+    el.classList.remove('offline', 'pending', 'syncing', 'ok', 'erro');
+
+    if (!navigator.onLine || estado === 'offline') {
+        el.textContent = 'Offline';
+        el.classList.add('offline');
+        return;
+    }
+    if (estado === 'sincronizando' || syncEmAndamento) {
+        el.textContent = 'Sincronizando';
+        el.classList.add('syncing');
+        return;
+    }
+    if (syncFalhou || estado === 'erro') {
+        el.textContent = 'Falha ao sincronizar';
+        el.classList.add('erro');
+        return;
+    }
+    if (temPendencia() || estado === 'pendente') {
+        el.textContent = 'Pendente';
+        el.classList.add('pending');
+        return;
+    }
+
+    const last = localStorage.getItem(LAST_SYNC_KEY);
+    el.textContent = last ? 'Sync ' + formatarHoraSync(last) : 'Sincronizado';
+    el.classList.add('ok');
+}
+
+function showSyncStatus(message, isSuccess = true) {
+    if (!isOnline()) atualizarChipSync('offline');
+    else if (!isSuccess) {
+        syncFalhou = true;
+        atualizarChipSync('erro');
+    } else {
+        atualizarChipSync();
+    }
+    if (message) console.log(message);
 }
 
 // ============================================================
@@ -171,80 +276,144 @@ function calcularTotalViagem(viagem) {
     return total;
 }
 
+function distanciaViagem(viagem) {
+    if (!viagem || !viagem.trechos) return 0;
+    return viagem.trechos.reduce((acc, t) => acc + (Number(t.distancia) || 0), 0);
+}
+
+function totaisDaViagem(viagem) {
+    const gastoReal = calcularTotalViagem(viagem);
+    const combustivelReal = viagem.trechos ? viagem.trechos.reduce((acc, t) => acc + calcularCombustivelReal(t), 0) : 0;
+    const combustivelEstimado = viagem.trechos ? viagem.trechos.reduce((acc, t) => acc + calcularCombustivelEstimadoValor(t), 0) : 0;
+    const km = distanciaViagem(viagem);
+    return {
+        gastoReal,
+        combustivelReal,
+        combustivelEstimado,
+        km,
+        porKm: km > 0 ? gastoReal / km : 0
+    };
+}
+
+function renderizarTotaisViagem(viagem) {
+    const el = document.getElementById('totaisViagem');
+    if (!el || !viagem) return;
+    const totais = totaisDaViagem(viagem);
+    el.innerHTML = `
+        <div class="total-item">
+            <span class="total-label">Gasto real</span>
+            <strong>${formatarMoeda(totais.gastoReal)}</strong>
+        </div>
+        <div class="total-item">
+            <span class="total-label">Combustível estimado</span>
+            <strong>${formatarMoeda(totais.combustivelEstimado)}</strong>
+        </div>
+        <div class="total-item">
+            <span class="total-label">Combustível real</span>
+            <strong>${formatarMoeda(totais.combustivelReal)}</strong>
+        </div>
+        <div class="total-item">
+            <span class="total-label">Distância</span>
+            <strong>${totais.km.toFixed(1)} km</strong>
+        </div>
+        <div class="total-item">
+            <span class="total-label">Custo por km</span>
+            <strong>${totais.km > 0 ? formatarMoeda(totais.porKm) : '—'}</strong>
+        </div>
+        <p class="totais-nota">O combustível estimado não entra no gasto real. O combustível real soma os abastecimentos.</p>
+    `;
+}
+
 // ============================================================
 // 6. SINCRONIZAÇÃO DE CONFIGURAÇÕES
 // ============================================================
 
 async function syncConfigToSupabase() {
-    if (!isOnline()) {
-        console.warn('⚠️ Offline - Configurações salvas localmente.');
-        return;
+    if (!isOnline() || !userAtual || !window.BuscuzAuth || !window.BuscuzAuth.saveConfig) {
+        return false;
     }
-    
-    if (!userAtual) {
-        console.warn('⚠️ Usuário não autenticado - Não é possível sincronizar configurações');
-        return;
-    }
-    
+
     try {
-        console.log('🔄 Sincronizando configurações para o Supabase...');
-        
         const result = await window.BuscuzAuth.saveConfig(userAtual.id, dados.config);
-        
-        if (result.success) {
-            console.log('✅ Configurações sincronizadas com sucesso!');
-        } else {
-            console.error('❌ Erro ao sincronizar configurações:', result.error);
-        }
+        return !!(result && result.success);
     } catch (error) {
-        console.error('❌ Erro ao sincronizar configurações:', error);
+        console.error('Erro ao sincronizar configurações:', error);
+        return false;
     }
 }
 
 async function syncConfigFromSupabase() {
-    if (!userAtual) return;
-    
+    if (!userAtual || !isOnline() || !window.BuscuzAuth || !window.BuscuzAuth.loadConfig) return;
+    if (localStorage.getItem(CONFIG_DIRTY_KEY) === '1') return;
+
     try {
-        console.log('🔄 Carregando configurações do Supabase...');
-        
         const result = await window.BuscuzAuth.loadConfig(userAtual.id);
-        
-        if (result.success) {
+
+        if (result && result.success && result.config) {
             dados.config.consumoMedio = result.config.consumoMedio;
             dados.config.precoCombustivel = result.config.precoCombustivel;
             salvarDados();
-            console.log('✅ Configurações carregadas do Supabase!');
-            
-            // Atualizar campos no modal se estiver aberto
+
             const consumoInput = document.getElementById('consumoMedio');
             const precoInput = document.getElementById('precoCombustivel');
             if (consumoInput) consumoInput.value = dados.config.consumoMedio;
             if (precoInput) precoInput.value = dados.config.precoCombustivel;
         }
     } catch (error) {
-        console.warn('⚠️ Erro ao carregar configurações do Supabase:', error);
+        console.warn('Erro ao carregar configurações do Supabase:', error);
     }
 }
 
-/**
- * Carregar configurações do Supabase (chamado no initApp)
- */
 async function carregarConfiguracoes() {
-    if (!userAtual) return;
-    
-    try {
-        console.log('📥 Carregando configurações...');
-        const result = await window.BuscuzAuth.loadConfig(userAtual.id);
-        
-        if (result.success) {
-            dados.config.consumoMedio = result.config.consumoMedio;
-            dados.config.precoCombustivel = result.config.precoCombustivel;
-            salvarDados();
-            console.log('✅ Configurações carregadas:', dados.config);
+    await syncConfigFromSupabase();
+}
+
+async function processarFilaExclusoes() {
+    if (!window.BuscuzAuth) return false;
+
+    const ordem = { despesa: 0, ponto: 1, trecho: 2, viagem: 3 };
+    const fila = lerFilaExclusoes().slice().sort((a, b) => (ordem[a.tipo] ?? 9) - (ordem[b.tipo] ?? 9));
+    const restantes = [];
+
+    for (const item of fila) {
+        let result = { success: false };
+        try {
+            if (item.tipo === 'viagem') result = await window.BuscuzAuth.deleteViagem(item.id);
+            else if (item.tipo === 'trecho') result = await window.BuscuzAuth.deleteTrecho(item.id);
+            else if (item.tipo === 'ponto') result = await window.BuscuzAuth.deletePonto(item.id);
+            else if (item.tipo === 'despesa') result = await window.BuscuzAuth.deleteDespesa(item.id);
+        } catch (error) {
+            result = { success: false };
         }
-    } catch (error) {
-        console.warn('⚠️ Erro ao carregar configurações:', error);
+        if (!result || !result.success) restantes.push(item);
     }
+
+    localStorage.setItem(DELETES_KEY, JSON.stringify(restantes));
+    return restantes.length === 0;
+}
+
+function agendarSync() {
+    if (syncTimer) {
+        clearInterval(syncTimer);
+        syncTimer = null;
+    }
+    const intervalo = lerIntervaloSync();
+    if (!intervalo) return;
+
+    syncTimer = setInterval(function() {
+        if (userAtual && isOnline() && temPendencia() && !syncEmAndamento) {
+            syncDataToSupabase();
+        }
+    }, intervalo);
+}
+
+async function sincronizarAgora() {
+    if (!isOnline()) {
+        atualizarChipSync('offline');
+        return;
+    }
+    if (temPendencia()) await syncDataToSupabase();
+    else await syncDataFromSupabase();
 }
 
 // ============================================================
@@ -252,55 +421,99 @@ async function carregarConfiguracoes() {
 // ============================================================
 
 async function syncDataToSupabase() {
-    // Verificar se está online
+    if (syncEmAndamento) return { success: false, skipped: true };
+
     if (!isOnline()) {
-        console.warn('⚠️ Offline - Dados salvos localmente. Serão sincronizados quando online.');
-        showSyncStatus('⚠️ Offline - Dados salvos localmente', false);
-        return;
+        atualizarChipSync('offline');
+        return { success: false, offline: true };
     }
-    
-    if (!userAtual) {
-        console.warn('⚠️ Usuário não autenticado - Não é possível sincronizar');
-        return;
+
+    if (!userAtual || !window.BuscuzAuth || !window.BuscuzAuth.syncData) {
+        atualizarChipSync('pendente');
+        return { success: false };
     }
-    
+
+    const versaoInicial = syncVersao;
+    syncEmAndamento = true;
+    atualizarChipSync('sincronizando');
+    let repetir = false;
+    let resultado = { success: false };
+
     try {
-        console.log('🔄 Sincronizando dados para o Supabase...');
-        showSyncStatus('🔄 Sincronizando...', true);
-        
-        // Sincronizar configurações
-        await syncConfigToSupabase();
-        
-        // Sincronizar viagens
+        const configOk = await syncConfigToSupabase();
+        if (configOk) localStorage.setItem(CONFIG_DIRTY_KEY, '0');
+        else localStorage.setItem(CONFIG_DIRTY_KEY, '1');
+
+        const deletesOk = await processarFilaExclusoes();
         const result = await window.BuscuzAuth.syncData(userAtual.id, dados.viagens);
-        
-        if (result.success) {
-            console.log('✅ Dados sincronizados com sucesso!');
-            showSyncStatus('✅ Dados sincronizados com sucesso!', true);
-        } else {
-            console.error('❌ Erro na sincronização:', result.error);
-            showSyncStatus('❌ Erro na sincronização: ' + result.error, false);
+        const dadosOk = !!(result && result.success) && deletesOk;
+
+        if (dadosOk && syncVersao === versaoInicial) {
+            localStorage.setItem(DIRTY_KEY, '0');
         }
+
+        if (dadosOk && configOk) {
+            localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
+        }
+
+        syncFalhou = !dadosOk || !configOk;
+        if (dadosOk && syncVersao !== versaoInicial) repetir = true;
+
+        resultado = { success: dadosOk && configOk, error: result && result.error };
     } catch (error) {
-        console.error('❌ Erro na sincronização:', error);
-        showSyncStatus('❌ Erro na sincronização', false);
+        console.error('Erro na sincronização:', error);
+        syncFalhou = true;
+        resultado = { success: false, error: error.message };
+    } finally {
+        syncEmAndamento = false;
+        atualizarChipSync();
     }
+
+    if (repetir) return syncDataToSupabase();
+    return resultado;
+}
+
+function aplicarViagensRemotas(viagensDoSupabase) {
+    dados.viagens = viagensDoSupabase;
+    salvarDados();
+
+    if (viagemAtual && !dados.viagens.some(v => v.id === viagemAtual.id) && document.getElementById('trechosContainer')) {
+        localStorage.removeItem('viagemAtualId');
+        window.location.href = 'index.html';
+        return;
+    }
+
+    if (viagemAtual) {
+        viagemAtual = dados.viagens.find(v => v.id === viagemAtual.id) || viagemAtual;
+    }
+
+    renderizarViagens();
+    if (document.getElementById('trechosContainer')) renderizarTrechos();
 }
 
 async function syncDataFromSupabase() {
-    if (!userAtual) return;
-    
+    if (!userAtual || !isOnline() || !window.BuscuzAuth || !window.BuscuzAuth.loadData) {
+        atualizarChipSync();
+        return;
+    }
+
+    if (temPendencia()) {
+        await syncDataToSupabase();
+        return;
+    }
+
+    const versaoAntes = syncVersao;
+
     try {
-        console.log('🔄 Carregando dados do Supabase...');
-        
-        // Carregar configurações primeiro
         await syncConfigFromSupabase();
-        
-        // Carregar viagens
         const result = await window.BuscuzAuth.loadData(userAtual.id);
-        
-        if (result.success && result.viagens) {
-            // Converter dados do Supabase para o formato local
+
+        if (syncVersao !== versaoAntes || temPendencia()) {
+            await syncDataToSupabase();
+            return;
+        }
+
+        if (result && result.success && result.viagens) {
             const viagensDoSupabase = result.viagens.map(v => ({
                 id: v.id,
                 nome: v.nome,
@@ -334,22 +547,25 @@ async function syncDataFromSupabase() {
                     }))
                 }))
             }));
-            
-            // Verificar se há dados para sincronizar
+
             if (viagensDoSupabase.length > 0) {
-                dados.viagens = viagensDoSupabase;
-                salvarDados();
-                console.log('✅ Dados carregados do Supabase! (' + viagensDoSupabase.length + ' viagens)');
-                renderizarViagens();
-            } else {
-                console.log('📭 Nenhuma viagem encontrada no Supabase. Enviando dados locais...');
-                // Se não há dados no Supabase, enviar os locais
+                aplicarViagensRemotas(viagensDoSupabase);
+                localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
+                syncFalhou = false;
+            } else if (dados.viagens.length > 0) {
+                marcarSujo();
                 await syncDataToSupabase();
+                return;
+            } else {
+                localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
+                syncFalhou = false;
             }
         }
+
+        atualizarChipSync();
     } catch (error) {
-        console.warn('⚠️ Erro ao carregar dados do Supabase:', error);
-        // Continuar com dados locais
+        console.warn('Erro ao carregar dados do Supabase:', error);
+        atualizarChipSync();
     }
 }
 
@@ -370,6 +586,7 @@ function criarViagem(dadosViagem) {
     
     dados.viagens.push(nova);
     salvarDados();
+    marcarSujo();
     renderizarViagens();
     syncDataToSupabase();
     
@@ -392,6 +609,7 @@ function atualizarViagem(id, dadosAtualizados) {
     viagem.descricao = dadosAtualizados.descricao ? dadosAtualizados.descricao.trim() : '';
 
     salvarDados();
+    marcarSujo();
     renderizarViagens();
     syncDataToSupabase();
     
@@ -409,8 +627,9 @@ function excluirViagem(id) {
     
     dados.viagens = dados.viagens.filter(v => v.id !== id);
     salvarDados();
+    enfileirarExclusao('viagem', id);
     renderizarViagens();
-    deletarViagemDoSupabase(id);
+    syncDataToSupabase();
     
     console.log('🗑️ Viagem excluída localmente:', viagem.nome);
 }
@@ -477,6 +696,7 @@ function criarTrecho(dadosTrecho) {
     
     viagem.trechos.push(novo);
     salvarDados();
+    marcarSujo();
     renderizarTrechos();
     syncDataToSupabase();
     
@@ -507,6 +727,7 @@ function atualizarTrecho(id, dadosAtualizados) {
     trecho.odometro = dadosAtualizados.odometro ? parseFloat(dadosAtualizados.odometro) : null;
 
     salvarDados();
+    marcarSujo();
     renderizarTrechos();
     syncDataToSupabase();
     
@@ -525,9 +746,10 @@ function excluirTrecho(id) {
     const trecho = viagem.trechos.find(t => t.id === id);
     viagem.trechos = viagem.trechos.filter(t => t.id !== id);
     salvarDados();
+    enfileirarExclusao('trecho', id);
     fecharModal('detalhesModal');
     renderizarTrechos();
-    deletarTrechoDoSupabase(id);
+    syncDataToSupabase();
     
     console.log('🗑️ Trecho excluído:', trecho ? trecho.cidadeAtual : id);
 }
@@ -575,6 +797,7 @@ function criarPonto(trechoId, dadosPonto) {
     };
     trecho.pontos.push(novo);
     salvarDados();
+    marcarSujo();
     renderizarTrechos();
     syncDataToSupabase();
     
@@ -608,6 +831,7 @@ function atualizarPonto(trechoId, pontoId, dadosPonto) {
     ponto.observacoes = dadosPonto.observacoes ? dadosPonto.observacoes.trim() : '';
 
     salvarDados();
+    marcarSujo();
     renderizarTrechos();
     syncDataToSupabase();
     
@@ -632,8 +856,9 @@ function excluirPonto(trechoId, pontoId) {
     const ponto = trecho.pontos.find(p => p.id === pontoId);
     trecho.pontos = trecho.pontos.filter(p => p.id !== pontoId);
     salvarDados();
+    enfileirarExclusao('ponto', pontoId);
     renderizarTrechos();
-    deletarPontoDoSupabase(pontoId);
+    syncDataToSupabase();
     
     console.log('🗑️ Ponto excluído:', ponto ? ponto.nome : pontoId);
 }
@@ -688,6 +913,7 @@ function criarDespesa(trechoId, dadosDespesa) {
     };
     trecho.despesas.push(novo);
     salvarDados();
+    marcarSujo();
     renderizarTrechos();
     syncDataToSupabase();
     
@@ -720,6 +946,7 @@ function atualizarDespesa(trechoId, despesaId, dadosDespesa) {
     despesa.tipo = dadosDespesa.tipo || 'outro';
 
     salvarDados();
+    marcarSujo();
     renderizarTrechos();
     syncDataToSupabase();
     
@@ -744,8 +971,9 @@ function excluirDespesa(trechoId, despesaId) {
     const despesa = trecho.despesas.find(d => d.id === despesaId);
     trecho.despesas = trecho.despesas.filter(d => d.id !== despesaId);
     salvarDados();
+    enfileirarExclusao('despesa', despesaId);
     renderizarTrechos();
-    deletarDespesaDoSupabase(despesaId);
+    syncDataToSupabase();
     
     console.log('🗑️ Despesa excluída:', despesa ? despesa.descricao : despesaId);
 }
@@ -802,6 +1030,7 @@ function renderizarViagens() {
         const totalDias = calcularDias(viagem.dataInicio, viagem.dataFim);
         const totalTrechos = viagem.trechos ? viagem.trechos.length : 0;
         const totalGastos = calcularTotalViagem(viagem);
+        const kmViagem = distanciaViagem(viagem);
         const statusLabels = {
             'planejado': '📅 Planejada',
             'em-andamento': '🔄 Em andamento',
@@ -822,14 +1051,16 @@ function renderizarViagens() {
                 ${viagem.descricao ? `<div class="viagem-descricao">${viagem.descricao}</div>` : ''}
                 <div class="viagem-resumo">
                     <span class="stat"><i class="fas fa-road"></i> ${totalTrechos} trechos</span>
+                    <span class="stat"><i class="fas fa-route"></i> ${kmViagem.toFixed(1)} km</span>
                     <span class="stat"><i class="fas fa-coins"></i> ${formatarMoeda(totalGastos)}</span>
+                    <span class="stat"><i class="fas fa-tachometer-alt"></i> ${kmViagem > 0 ? formatarMoeda(totalGastos / kmViagem) + '/km' : '—'}</span>
                     <span class="stat"><i class="fas fa-map-marker-alt"></i> ${viagem.trechos ? viagem.trechos.reduce((acc, t) => acc + (t.pontos ? t.pontos.length : 0), 0) : 0} pontos</span>
                 </div>
-                <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
-                    <button class="secondary-btn editar-viagem" data-id="${viagem.id}" style="font-size:0.8rem; padding:4px 10px;">
+                <div class="card-actions">
+                    <button class="secondary-btn editar-viagem" data-id="${viagem.id}" type="button">
                         <i class="fas fa-edit"></i> Editar
                     </button>
-                    <button class="danger-btn excluir-viagem" data-id="${viagem.id}" style="font-size:0.8rem; padding:4px 10px;">
+                    <button class="danger-btn excluir-viagem" data-id="${viagem.id}" type="button">
                         <i class="fas fa-trash"></i> Excluir
                     </button>
                 </div>
@@ -917,8 +1148,10 @@ function renderizarTrechos() {
     };
     document.getElementById('viagemStatus').textContent = statusLabels[status];
     document.getElementById('viagemStatus').className = `status-badge ${status}`;
+    renderizarTotaisViagem(viagem);
 
     if (!viagem.trechos || !viagem.trechos.length) {
+        container.classList.remove('timeline');
         container.innerHTML = `
             <div class="empty-state" style="grid-column:1/-1; text-align:center; padding:40px 20px; color:#999;">
                 <i class="fas fa-road" style="font-size:2.5rem; display:block; margin-bottom:12px;"></i>
@@ -932,6 +1165,7 @@ function renderizarTrechos() {
     const trechosOrdenados = [...viagem.trechos].sort((a, b) => {
         return new Date(a.dataCheckin) - new Date(b.dataCheckin);
     });
+    container.classList.add('timeline');
 
     container.innerHTML = trechosOrdenados.map(trecho => {
         const totalPontos = trecho.pontos ? trecho.pontos.length : 0;
@@ -954,13 +1188,13 @@ function renderizarTrechos() {
         return `
             <div class="card-trecho" data-id="${trecho.id}">
                 <h3><i class="fas fa-arrow-right"></i> ${trecho.cidadeAtual} → ${trecho.proximaCidade}</h3>
-                <div class="cidades">
+                <!--<div class="cidades">
                     <i class="fas fa-map-pin"></i> ${trecho.cidadeAtual} → ${trecho.proximaCidade}
-                </div>
+                </div>-->
                 <div class="datas">
                     <i class="fas fa-calendar-alt"></i>
                     ${formatarData(trecho.dataCheckin)} até ${formatarData(trecho.dataCheckout)}
-                    <span class="status-badge ${status}">${statusLabels[status]}</span>
+                    <!--<span class="status-badge ${status}">${statusLabels[status]}</span>-->
                     ${dias > 0 ? `<span style="color:#3498db;">(${dias} dias)</span>` : ''}
                 </div>
                 <div class="resumo">
@@ -972,7 +1206,7 @@ function renderizarTrechos() {
                 <div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">
                     <span class="badge"><i class="fas fa-receipt"></i> ${totalDespesas} despesas</span>
                     <span class="badge"><i class="fas fa-coins"></i> ${formatarMoeda(totalGastos)}</span>
-                    ${combustivelReal > 0 ? `<span class="badge" style="background:#27ae60; color:white;"><i class="fas fa-gas-pump"></i> Real: ${formatarMoeda(combustivelReal)}</span>` : ''}
+                    ${combustivelReal > 0 ? `<span class="badge badge-real"><i class="fas fa-gas-pump"></i> Real: ${formatarMoeda(combustivelReal)}</span>` : ''}
                 </div>
                 <div style="font-size:0.7rem; color:#999; margin-top:4px;">
                     <i class="fas fa-info-circle"></i> Combustível estimado (${litrosEstimados.toFixed(1)}L) - Não incluso no total
@@ -1129,13 +1363,13 @@ function abrirDetalhes(id) {
         <div class="resumo-gastos">
             <div class="gasto-item">
                 <div class="label">Combustível Estimado</div>
-                <div class="value" style="color:#7f8c8d;">${formatarMoeda(combustivelEstimado)}</div>
-                <div style="font-size:0.65rem; color:#999;">${litrosEstimados.toFixed(1)}L estimados</div>
+                <div class="value valor-estimado">${formatarMoeda(combustivelEstimado)}</div>
+                <div class="gasto-nota">${litrosEstimados.toFixed(1)}L estimados</div>
             </div>
-            <div class="gasto-item" style="${combustivelReal > 0 ? 'background:#27ae60; color:white; border-radius:4px; padding:4px;' : ''}">
-                <div class="label" style="${combustivelReal > 0 ? 'color:#ddd;' : ''}">Combustível Real</div>
-                <div class="value" style="${combustivelReal > 0 ? 'color:white;' : ''}">${formatarMoeda(combustivelReal)}</div>
-                ${combustivelReal > 0 ? '<div style="font-size:0.65rem; color:#ddd;">⛽ Abastecimentos</div>' : '<div style="font-size:0.65rem; color:#999;">Nenhum abastecimento</div>'}
+            <div class="gasto-item${combustivelReal > 0 ? ' gasto-real' : ''}">
+                <div class="label">Combustível Real</div>
+                <div class="value">${formatarMoeda(combustivelReal)}</div>
+                <div class="gasto-nota">${combustivelReal > 0 ? 'Abastecimentos' : 'Nenhum abastecimento'}</div>
             </div>
             <div class="gasto-item">
                 <div class="label">Pontos</div>
@@ -1145,9 +1379,9 @@ function abrirDetalhes(id) {
                 <div class="label">Despesas</div>
                 <div class="value">${formatarMoeda(totalDespesas)}</div>
             </div>
-            <div class="gasto-item" style="background:#2c3e50; color:white; border-radius:4px; padding:4px;">
-                <div class="label" style="color:#ddd;">Total (sem estimado)</div>
-                <div class="value" style="color:white;">${formatarMoeda(totalGeral)}</div>
+            <div class="gasto-item gasto-total">
+                <div class="label">Total (sem estimado)</div>
+                <div class="value">${formatarMoeda(totalGeral)}</div>
             </div>
         </div>
 
@@ -1174,7 +1408,6 @@ function abrirDetalhes(id) {
 
             switch (acao) {
                 case 'editarTrecho':
-                    fecharModal('detalhesModal');
                     editarTrecho(trecho.id);
                     break;
                 case 'excluirTrecho':
@@ -1183,11 +1416,9 @@ function abrirDetalhes(id) {
                     }
                     break;
                 case 'novoPonto':
-                    fecharModal('detalhesModal');
                     abrirModalPonto(trecho.id);
                     break;
                 case 'editarPonto':
-                    fecharModal('detalhesModal');
                     editarPonto(trecho.id, id);
                     break;
                 case 'excluirPonto':
@@ -1195,11 +1426,9 @@ function abrirDetalhes(id) {
                     abrirDetalhes(trecho.id);
                     break;
                 case 'novaDespesa':
-                    fecharModal('detalhesModal');
                     abrirModalDespesa(trecho.id);
                     break;
                 case 'editarDespesa':
-                    fecharModal('detalhesModal');
                     editarDespesa(trecho.id, id);
                     break;
                 case 'excluirDespesa':
@@ -1340,21 +1569,87 @@ function abrirModalDespesa(trechoId, despesa = null) {
         document.getElementById('despesaData').value = despesa.data || hoje;
         document.getElementById('despesaTipo').value = despesa.tipo || 'outro';
         despesaEmEdicao = despesa.id;
+        marcarTipoDespesa(despesa.tipo || 'outro');
     } else {
         document.getElementById('despesaData').value = hoje;
         despesaEmEdicao = null;
+        marcarTipoDespesa('pedagio');
     }
 
     modal.style.display = 'block';
 }
 
+function marcarTipoDespesa(tipo) {
+    const hidden = document.getElementById('despesaTipo');
+    const valor = tipo || 'outro';
+    if (hidden) hidden.value = valor;
+    document.querySelectorAll('.tipo-chip').forEach(btn => {
+        const ativo = btn.dataset.tipo === valor;
+        btn.classList.toggle('active', ativo);
+        btn.setAttribute('aria-pressed', ativo ? 'true' : 'false');
+    });
+}
+
+function atualizarDetalhesSeAberto() {
+    const modal = document.getElementById('detalhesModal');
+    if (!modal || modal.style.display !== 'block') return;
+    const trechoAtualId = document.querySelector('#detalhesModal .detalhes-header h3')?.dataset?.id;
+    if (trechoAtualId) abrirDetalhes(trechoAtualId);
+}
+
+function ligarSeletorTema() {
+    const select = document.getElementById('temaApp');
+    if (!select || select.dataset.ligado === '1') return;
+    select.dataset.ligado = '1';
+    select.addEventListener('change', () => {
+        if (window.BuscuzTema) window.BuscuzTema.definir(select.value);
+    });
+}
+
 function abrirModalConfig() {
     const modal = document.getElementById('configModal');
     if (!modal) return;
-    
+
     document.getElementById('consumoMedio').value = dados.config.consumoMedio || '';
     document.getElementById('precoCombustivel').value = dados.config.precoCombustivel || '';
+    const select = document.getElementById('syncInterval');
+    if (select) select.value = String(lerIntervaloSync());
+    const status = document.getElementById('syncPreferenciaStatus');
+    if (status) status.textContent = textoUltimaSync();
+    const tema = document.getElementById('temaApp');
+    if (tema && window.BuscuzTema) tema.value = window.BuscuzTema.ler();
+    ligarSeletorTema();
     modal.style.display = 'block';
+}
+
+async function salvarConfiguracoesDoFormulario() {
+    const consumo = parseFloat(document.getElementById('consumoMedio').value);
+    const preco = parseFloat(document.getElementById('precoCombustivel').value);
+
+    if (!(consumo > 0) || !(preco > 0)) {
+        alert('Por favor, insira valores válidos (maiores que zero).');
+        return;
+    }
+
+    dados.config.consumoMedio = consumo;
+    dados.config.precoCombustivel = preco;
+    salvarDados();
+    marcarConfigPendente();
+
+    const select = document.getElementById('syncInterval');
+    if (select) {
+        const intervalo = parseInt(select.value, 10);
+        salvarIntervaloSync(Number.isFinite(intervalo) ? intervalo : SYNC_INTERVAL_PADRAO);
+        agendarSync();
+    }
+
+    fecharModal('configModal');
+    if (document.getElementById('viagensContainer')) renderizarViagens();
+    if (document.getElementById('trechosContainer')) renderizarTrechos();
+
+    const ok = await syncConfigToSupabase();
+    if (ok) localStorage.setItem(CONFIG_DIRTY_KEY, '0');
+    atualizarChipSync();
 }
 
 function abrirResumoViagem() {
@@ -1372,9 +1667,43 @@ function abrirResumoViagem() {
     const totalPontos = viagem.trechos ? viagem.trechos.reduce((acc, t) => acc + (t.pontos ? t.pontos.length : 0), 0) : 0;
     const totalDespesas = viagem.trechos ? viagem.trechos.reduce((acc, t) => acc + (t.despesas ? t.despesas.length : 0), 0) : 0;
     const totalGastos = calcularTotalViagem(viagem);
-    const totalCombustivelReal = viagem.trechos ? viagem.trechos.reduce((acc, t) => acc + calcularCombustivelReal(t), 0) : 0;
-    const totalCombustivelEstimado = viagem.trechos ? viagem.trechos.reduce((acc, t) => acc + calcularCombustivelEstimadoValor(t), 0) : 0;
-    const distanciaTotal = viagem.trechos ? viagem.trechos.reduce((acc, t) => acc + (t.distancia || 0), 0) : 0;
+    const totais = totaisDaViagem(viagem);
+    const totalPontosValor = viagem.trechos
+        ? viagem.trechos.reduce((acc, t) => acc + (t.pontos ? t.pontos.reduce((s, p) => s + (p.custo || 0), 0) : 0), 0)
+        : 0;
+
+    const tipos = [
+        ['pedagio', 'Pedágio'],
+        ['balsa', 'Balsa'],
+        ['abastecimento', 'Abastecimento'],
+        ['alimentacao', 'Alimentação'],
+        ['entrada', 'Entrada'],
+        ['hospedagem', 'Hospedagem'],
+        ['outro', 'Outro']
+    ];
+    const porTipo = {};
+    if (viagem.trechos) {
+        viagem.trechos.forEach(t => {
+            (t.despesas || []).forEach(d => {
+                const tipo = d.tipo || 'outro';
+                porTipo[tipo] = (porTipo[tipo] || 0) + (d.valor || 0);
+            });
+        });
+    }
+    const barras = tipos.map(([tipo, label]) => ({ label, valor: porTipo[tipo] || 0 }));
+    barras.push({ label: 'Pontos turísticos', valor: totalPontosValor });
+    const maior = Math.max(...barras.map(b => b.valor), 1);
+    const barrasHtml = barras.map(b => `
+        <div class="barra-linha">
+            <div class="barra-meta">
+                <span>${b.label}</span>
+                <strong>${formatarMoeda(b.valor)}</strong>
+            </div>
+            <div class="barra-trilho">
+                <div class="barra-preenchimento" style="width:${Math.round((b.valor / maior) * 100)}%"></div>
+            </div>
+        </div>
+    `).join('');
 
     content.innerHTML = `
         <div class="resumo-viagem-stats">
@@ -1391,27 +1720,35 @@ function abrirResumoViagem() {
                 <div class="stat-label">Despesas</div>
             </div>
             <div class="stat-item">
-                <div class="stat-value">${distanciaTotal.toFixed(1)} km</div>
+                <div class="stat-value">${totais.km.toFixed(1)} km</div>
                 <div class="stat-label">Distância Total</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">${totais.km > 0 ? formatarMoeda(totais.porKm) : '—'}</div>
+                <div class="stat-label">Custo por km</div>
             </div>
         </div>
         <div class="resumo-viagem-stats">
-            <div class="stat-item" style="background:#ecf0f1;">
-                <div class="stat-value">${formatarMoeda(totalCombustivelEstimado)}</div>
+            <div class="stat-item stat-estimado">
+                <div class="stat-value">${formatarMoeda(totais.combustivelEstimado)}</div>
                 <div class="stat-label">Combustível Estimado</div>
             </div>
-            <div class="stat-item" style="background:#27ae60; color:white;">
-                <div class="stat-value" style="color:white;">${formatarMoeda(totalCombustivelReal)}</div>
-                <div class="stat-label" style="color:#ddd;">Combustível Real</div>
+            <div class="stat-item stat-real">
+                <div class="stat-value">${formatarMoeda(totais.combustivelReal)}</div>
+                <div class="stat-label">Combustível Real</div>
             </div>
-            <div class="stat-item" style="background:#2c3e50; color:white;">
-                <div class="stat-value" style="color:white;">${formatarMoeda(totalGastos)}</div>
-                <div class="stat-label" style="color:#ddd;">Total de Gastos</div>
+            <div class="stat-item stat-total">
+                <div class="stat-value">${formatarMoeda(totalGastos)}</div>
+                <div class="stat-label">Total de Gastos</div>
             </div>
         </div>
-        <div style="text-align:center; margin-top:16px; color:#7f8c8d; font-size:0.9rem;">
-            <i class="fas fa-info-circle"></i> 
-            ${totalCombustivelReal > 0 ? 'Combustível Real baseado em abastecimentos registrados' : 'Nenhum abastecimento registrado ainda'}
+        <div class="barras-gastos">
+            <h3>Por tipo</h3>
+            ${barrasHtml}
+        </div>
+        <div class="resumo-nota">
+            <i class="fas fa-info-circle"></i>
+            ${totais.combustivelReal > 0 ? 'Combustível real baseado em abastecimentos registrados. O estimado não entra no total.' : 'Nenhum abastecimento registrado ainda. O combustível estimado não entra no total.'}
         </div>
     `;
 
@@ -1463,22 +1800,7 @@ function initPaginaViagens() {
 
     const btnSalvarConfig = document.getElementById('btnSalvarConfig');
     if (btnSalvarConfig) {
-        btnSalvarConfig.addEventListener('click', async () => {
-            const consumo = parseFloat(document.getElementById('consumoMedio').value);
-            const preco = parseFloat(document.getElementById('precoCombustivel').value);
-
-            if (consumo > 0 && preco > 0) {
-                dados.config.consumoMedio = consumo;
-                dados.config.precoCombustivel = preco;
-                salvarDados();
-                await syncConfigToSupabase();
-                fecharModal('configModal');
-                renderizarViagens();
-                //alert('Configurações salvas com sucesso!');
-            } else {
-                alert('Por favor, insira valores válidos (maiores que zero).');
-            }
-        });
+        btnSalvarConfig.addEventListener('click', salvarConfiguracoesDoFormulario);
     }
 
     const btnSync = document.getElementById('btnSync');
@@ -1486,9 +1808,12 @@ function initPaginaViagens() {
         btnSync.addEventListener('click', async function() {
             this.disabled = true;
             this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...';
-            await syncDataToSupabase();
-            this.disabled = false;
-            this.innerHTML = '<i class="fas fa-sync"></i> Sincronizar';
+            try {
+                await sincronizarAgora();
+            } finally {
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-sync"></i> Sincronizar';
+            }
         });
     }
 
@@ -1577,6 +1902,10 @@ function initPaginaRoteiro() {
 
     renderizarTrechos();
 
+    document.querySelectorAll('.tipo-chip').forEach(btn => {
+        btn.addEventListener('click', () => marcarTipoDespesa(btn.dataset.tipo));
+    });
+
     const btnVoltar = document.getElementById('btnVoltar');
     if (btnVoltar) {
         btnVoltar.addEventListener('click', voltarParaViagens);
@@ -1589,22 +1918,7 @@ function initPaginaRoteiro() {
 
     const btnSalvarConfig = document.getElementById('btnSalvarConfig');
     if (btnSalvarConfig) {
-        btnSalvarConfig.addEventListener('click', async () => {
-            const consumo = parseFloat(document.getElementById('consumoMedio').value);
-            const preco = parseFloat(document.getElementById('precoCombustivel').value);
-
-            if (consumo > 0 && preco > 0) {
-                dados.config.consumoMedio = consumo;
-                dados.config.precoCombustivel = preco;
-                salvarDados();
-                await syncConfigToSupabase();
-                fecharModal('configModal');
-                renderizarTrechos();
-                //alert('Configurações salvas com sucesso!');
-            } else {
-                alert('Por favor, insira valores válidos (maiores que zero).');
-            }
-        });
+        btnSalvarConfig.addEventListener('click', salvarConfiguracoesDoFormulario);
     }
 
     const btnSyncRoteiro = document.getElementById('btnSyncRoteiro');
@@ -1612,9 +1926,12 @@ function initPaginaRoteiro() {
         btnSyncRoteiro.addEventListener('click', async function() {
             this.disabled = true;
             this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            await syncDataToSupabase();
-            this.disabled = false;
-            this.innerHTML = '<i class="fas fa-sync"></i>';
+            try {
+                await sincronizarAgora();
+            } finally {
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-sync"></i>';
+            }
         });
     }
 
@@ -1664,6 +1981,7 @@ function initPaginaRoteiro() {
                 criarTrecho(dadosForm);
             }
             fecharModal('trechoModal');
+            atualizarDetalhesSeAberto();
         });
     }
 
@@ -1700,10 +2018,7 @@ function initPaginaRoteiro() {
                 criarPonto(trechoId, dadosForm);
             }
             fecharModal('pontoModal');
-            if (document.getElementById('detalhesModal').style.display === 'block') {
-                const trechoAtualId = document.querySelector('#detalhesModal .detalhes-header h3')?.dataset?.id;
-                if (trechoAtualId) abrirDetalhes(trechoAtualId);
-            }
+            atualizarDetalhesSeAberto();
         });
     }
 
@@ -1731,10 +2046,7 @@ function initPaginaRoteiro() {
                 criarDespesa(trechoId, dadosForm);
             }
             fecharModal('despesaModal');
-            if (document.getElementById('detalhesModal').style.display === 'block') {
-                const trechoAtualId = document.querySelector('#detalhesModal .detalhes-header h3')?.dataset?.id;
-                if (trechoAtualId) abrirDetalhes(trechoAtualId);
-            }
+            atualizarDetalhesSeAberto();
         });
     }
 
@@ -1761,30 +2073,49 @@ function initPaginaRoteiro() {
 
 async function initApp() {
     console.log('🚀 Inicializando Buscuz...');
-    
+
     const authResult = await window.checkAuthAndRedirect();
-    
+
     if (!authResult || !authResult.authenticated) {
         console.log('⛔ Usuário não autenticado. Redirecionando...');
         return;
     }
-    
+
     userAtual = authResult.user;
     console.log('✅ Usuário autenticado:', userAtual.email);
-    
+
     carregarDados();
+
+    let paginaIniciada = false;
+    if (document.getElementById('viagensContainer')) {
+        initPaginaViagens();
+        paginaIniciada = true;
+    } else if (document.getElementById('trechosContainer')) {
+        const viagemId = localStorage.getItem('viagemAtualId');
+        if (dados.viagens.some(v => v.id === viagemId)) {
+            initPaginaRoteiro();
+            paginaIniciada = true;
+        }
+    }
+
+    atualizarInfoUsuario(authResult.user);
+    ligarSeletorTema();
+    atualizarChipSync();
+    agendarSync();
+
     await carregarConfiguracoes();
     await syncDataFromSupabase();
-    
-    if (document.getElementById('viagensContainer')) {
-        console.log('📋 Página de viagens detectada');
-        initPaginaViagens();
-    } else if (document.getElementById('trechosContainer')) {
-        console.log('📋 Página de roteiro detectada');
+
+    if (!paginaIniciada && document.getElementById('trechosContainer')) {
         initPaginaRoteiro();
+    } else if (document.getElementById('viagensContainer')) {
+        renderizarViagens();
+    } else if (document.getElementById('trechosContainer') && viagemAtual) {
+        viagemAtual = dados.viagens.find(v => v.id === viagemAtual.id) || viagemAtual;
+        renderizarTrechos();
     }
-    
-    atualizarInfoUsuario(authResult.user);
+
+    atualizarChipSync();
 }
 
 function atualizarInfoUsuario(user) {
@@ -1805,18 +2136,15 @@ function atualizarInfoUsuario(user) {
 // ============================================================
 
 window.addEventListener('online', function() {
-    console.log('📶 Conexão restaurada! Sincronizando dados...');
-    if (userAtual) {
+    atualizarChipSync();
+    if (userAtual && temPendencia()) {
         syncDataToSupabase();
     }
 });
 
-setInterval(function() {
-    if (userAtual && isOnline()) {
-        console.log('🔄 Sincronização automática...');
-        syncDataToSupabase();
-    }
-}, 300000);
+window.addEventListener('offline', function() {
+    atualizarChipSync();
+});
 
 // ============================================================
 // 20. INICIAR APLICAÇÃO

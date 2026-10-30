@@ -3,7 +3,16 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+    <meta name="theme-color" content="#1C9FFF" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Buscuz" />
     <title>Buscuz - Roteiro da Viagem</title>
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" type="image/png" href="imagens/icone.png" />
+    <link rel="apple-touch-icon" href="imagens/icone.png" />
+    <script src="tema.js"></script>
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
 </head>
@@ -11,9 +20,13 @@
     <div id="app">
         <!-- Cabeçalho -->
         <header>
-            <button id="btnVoltar" class="icon-btn"><i class="fas fa-arrow-left"></i></button>
-            <h1 id="headerTitle"><i class="fas fa-route"></i> Roteiro</h1>
-            <button id="btnConfigRoteiro" class="icon-btn"><i class="fas fa-cog"></i></button>
+            <button id="btnVoltar" class="icon-btn" type="button" aria-label="Voltar"><i class="fas fa-arrow-left"></i></button>
+            <h1 id="headerTitle">Roteiro</h1>
+            <div class="header-actions">
+                <span id="syncStatus" class="sync-chip" role="status">Sincronizado</span>
+                <button id="btnSyncRoteiro" class="icon-btn" type="button" aria-label="Sincronizar"><i class="fas fa-sync"></i></button>
+                <button id="btnConfigRoteiro" class="icon-btn" type="button" aria-label="Configurações"><i class="fas fa-cog"></i></button>
+            </div>
         </header>
 
         <!-- Informações da Viagem -->
@@ -26,6 +39,8 @@
             </div>
             <p id="viagemDescricao" class="viagem-descricao"></p>
         </div>
+
+        <div id="totaisViagem" class="totais-viagem" aria-live="polite"></div>
 
         <!-- Tela Principal -->
         <main id="mainScreen">
@@ -43,15 +58,45 @@
             <div class="modal-content">
                 <span class="close">&times;</span>
                 <h2><i class="fas fa-sliders-h"></i> Configurações</h2>
-                <div class="form-group">
-                    <label>Consumo médio (km/l)</label>
-                    <input type="number" id="consumoMedio" step="0.1" min="0" />
-                </div>
-                <div class="form-group">
-                    <label>Preço do combustível (R$/l)</label>
-                    <input type="number" id="precoCombustivel" step="0.01" min="0" />
-                </div>
-                <button id="btnSalvarConfig" class="primary-btn">Salvar</button>
+                <section class="config-section">
+                    <h3>Aparência</h3>
+                    <div class="form-group">
+                        <label for="temaApp">Tema</label>
+                        <select id="temaApp">
+                            <option value="sistema">Automático</option>
+                            <option value="claro">Claro</option>
+                            <option value="escuro">Escuro</option>
+                        </select>
+                    </div>
+                </section>
+                <section class="config-section">
+                    <h3>Veículo</h3>
+                    <div class="form-group">
+                        <label for="consumoMedio">Consumo médio (km/l)</label>
+                        <input type="number" id="consumoMedio" step="0.1" min="0" />
+                    </div>
+                    <div class="form-group">
+                        <label for="precoCombustivel">Preço do combustível (R$/l)</label>
+                        <input type="number" id="precoCombustivel" step="0.01" min="0" />
+                    </div>
+                </section>
+                <section class="config-section">
+                    <h3>Sincronização</h3>
+                    <p class="config-hint">Intervalo neste aparelho. O botão Sincronizar continua disponível.</p>
+                    <div class="form-group">
+                        <label for="syncInterval">Intervalo</label>
+                        <select id="syncInterval">
+                            <option value="0">Somente manual</option>
+                            <option value="60000">1 minuto</option>
+                            <option value="300000">5 minutos</option>
+                            <option value="900000">15 minutos</option>
+                            <option value="1800000">30 minutos</option>
+                            <option value="3600000">1 hora</option>
+                        </select>
+                    </div>
+                    <p id="syncPreferenciaStatus" class="config-hint"></p>
+                </section>
+                <button id="btnSalvarConfig" class="primary-btn" type="button">Salvar</button>
             </div>
         </div>
 
@@ -165,15 +210,16 @@
                     </div>
                     <div class="form-group">
                         <label>Tipo</label>
-                        <select id="despesaTipo">
-                            <option value="pedagio">Pedágio</option>
-                            <option value="balsa">Balsa</option>
-                            <option value="abastecimento">Abastecimento</option>
-                            <option value="alimentacao">Alimentação</option>
-                            <option value="entrada">Entrada</option>
-                            <option value="hospedagem">Hospedagem</option>
-                            <option value="outro">Outro</option>
-                        </select>
+                        <input type="hidden" id="despesaTipo" value="pedagio" />
+                        <div class="tipo-chips" id="despesaTipoChips">
+                            <button type="button" class="tipo-chip active" data-tipo="pedagio"><i class="fas fa-road"></i> Pedágio</button>
+                            <button type="button" class="tipo-chip" data-tipo="balsa"><i class="fas fa-ship"></i> Balsa</button>
+                            <button type="button" class="tipo-chip" data-tipo="abastecimento"><i class="fas fa-gas-pump"></i> Abastecimento</button>
+                            <button type="button" class="tipo-chip" data-tipo="alimentacao"><i class="fas fa-utensils"></i> Alimentação</button>
+                            <button type="button" class="tipo-chip" data-tipo="entrada"><i class="fas fa-ticket-alt"></i> Entrada</button>
+                            <button type="button" class="tipo-chip" data-tipo="hospedagem"><i class="fas fa-bed"></i> Hospedagem</button>
+                            <button type="button" class="tipo-chip" data-tipo="outro"><i class="fas fa-ellipsis-h"></i> Outro</button>
+                        </div>
                     </div>
                     <button type="submit" class="primary-btn">Salvar Despesa</button>
                 </form>
@@ -192,6 +238,7 @@
         </div>
     </div>
 
+    <script src="pwa.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js"></script>
     <script src="app.js"></script>

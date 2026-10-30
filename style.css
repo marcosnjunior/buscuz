@@ -7,15 +7,15 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #f5f7fa;
-    color: #333;
-    padding-bottom: 20px;
+    background: #E7F3FF;
+    color: #14324F;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
 }
 
 #app {
-    max-width: 800px;
+    max-width: 840px;
     margin: 0 auto;
-    padding: 10px;
+    padding: 0 12px 24px;
 }
 
 /* Cabeçalho */
@@ -23,12 +23,16 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #2c3e50;
+    gap: 12px;
+    background: linear-gradient(135deg, #1C9FFF 0%, #0B84E8 100%);
     color: white;
-    padding: 16px 20px;
-    border-radius: 12px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+    border-radius: 0 0 18px 18px;
+    margin: 0 -12px 16px;
+    box-shadow: 0 8px 24px rgba(28, 159, 255, 0.28);
+    position: sticky;
+    top: 0;
+    z-index: 80;
 }
 
 header h1 {
@@ -42,8 +46,10 @@ header h1 {
     background: transparent;
     border: none;
     color: white;
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     cursor: pointer;
+    min-width: 44px;
+    min-height: 44px;
     padding: 8px;
     border-radius: 50%;
     transition: background 0.2s;
@@ -62,49 +68,61 @@ header h1 {
 }
 
 .primary-btn {
-    background: #3498db;
+    background: #1C9FFF;
     color: white;
     border: none;
+    min-height: 44px;
     padding: 10px 18px;
-    border-radius: 8px;
+    border-radius: 12px;
     font-size: 0.95rem;
+    font-weight: 700;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     transition: background 0.2s;
 }
 
 .primary-btn:hover {
-    background: #2980b9;
+    background: #0B84E8;
 }
 
 .secondary-btn {
-    background: #ecf0f1;
-    color: #333;
+    background: #FFF6D6;
+    color: #14324F;
     border: none;
+    min-height: 44px;
     padding: 8px 14px;
-    border-radius: 8px;
+    border-radius: 12px;
     font-size: 0.9rem;
+    font-weight: 700;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
     transition: background 0.2s;
 }
 
 .secondary-btn:hover {
-    background: #d5dbdb;
+    background: #FFE58A;
 }
 
 .danger-btn {
     background: #e74c3c;
     color: white;
     border: none;
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 0.8rem;
+    min-height: 44px;
+    padding: 8px 14px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 700;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     transition: background 0.2s;
 }
 
@@ -122,23 +140,25 @@ header h1 {
 
 .filtro-btn {
     background: white;
-    border: 2px solid #ecf0f1;
-    padding: 6px 14px;
-    border-radius: 20px;
+    border: 2px solid #D7E8F7;
+    min-height: 44px;
+    padding: 8px 14px;
+    border-radius: 999px;
     font-size: 0.85rem;
+    font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
-    color: #7f8c8d;
+    color: #5C7286;
 }
 
 .filtro-btn:hover {
-    border-color: #3498db;
-    color: #2c3e50;
+    border-color: #1C9FFF;
+    color: #14324F;
 }
 
 .filtro-btn.active {
-    background: #3498db;
-    border-color: #3498db;
+    background: #1C9FFF;
+    border-color: #1C9FFF;
     color: white;
 }
 
@@ -151,7 +171,7 @@ header h1 {
     box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     cursor: pointer;
     transition: transform 0.15s, box-shadow 0.15s;
-    border-left: 4px solid #3498db;
+    border-left: 4px solid #F5C400;
 }
 
 .viagem-card:hover {
@@ -161,7 +181,7 @@ header h1 {
 
 .viagem-card h3 {
     font-size: 1.2rem;
-    color: #2c3e50;
+    color: #14324F;
     margin-bottom: 6px;
     display: flex;
     align-items: center;
@@ -184,7 +204,7 @@ header h1 {
 }
 
 .viagem-card .viagem-info i {
-    color: #3498db;
+    color: #1C9FFF;
 }
 
 .viagem-card .viagem-resumo {
@@ -205,7 +225,7 @@ header h1 {
 }
 
 .viagem-card .viagem-resumo .stat i {
-    color: #3498db;
+    color: #1C9FFF;
 }
 
 .viagem-card .viagem-descricao {
@@ -224,7 +244,7 @@ header h1 {
 }
 
 .viagem-info h2 {
-    color: #2c3e50;
+    color: #14324F;
     margin-bottom: 8px;
 }
 
@@ -264,7 +284,7 @@ header h1 {
     box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     cursor: pointer;
     transition: transform 0.15s, box-shadow 0.15s;
-    border-left: 4px solid #3498db;
+    border-left: 4px solid #F5C400;
 }
 
 .card-trecho:hover {
@@ -274,7 +294,7 @@ header h1 {
 
 .card-trecho h3 {
     font-size: 1.1rem;
-    color: #2c3e50;
+    color: #14324F;
     margin-bottom: 6px;
 }
 
@@ -295,7 +315,7 @@ header h1 {
 }
 
 .card-trecho .datas i {
-    color: #3498db;
+    color: #1C9FFF;
 }
 
 .card-trecho .resumo {
@@ -314,7 +334,7 @@ header h1 {
 }
 
 .card-trecho .resumo i {
-    color: #3498db;
+    color: #1C9FFF;
     width: 18px;
 }
 
@@ -324,7 +344,7 @@ header h1 {
     padding: 2px 10px;
     border-radius: 12px;
     font-size: 0.75rem;
-    color: #2c3e50;
+    color: #14324F;
     margin-top: 6px;
 }
 
@@ -338,8 +358,8 @@ header h1 {
 }
 
 .status-badge.planejado {
-    background: #f39c12;
-    color: white;
+    background: #F5C400;
+    color: #14324F;
 }
 
 .status-badge.em-andamento {
@@ -348,7 +368,7 @@ header h1 {
 }
 
 .status-badge.finalizado {
-    background: #3498db;
+    background: #1C9FFF;
     color: white;
 }
 
@@ -384,12 +404,17 @@ header h1 {
 
 .modal-content .close {
     position: absolute;
-    top: 12px;
-    right: 16px;
+    top: 8px;
+    right: 8px;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 1.8rem;
     cursor: pointer;
-    color: #999;
-    transition: color 0.2s;
+    color: #7f8c8d;
+    line-height: 1;
 }
 
 .modal-content .close:hover {
@@ -398,7 +423,7 @@ header h1 {
 
 .modal-content h2 {
     margin-bottom: 20px;
-    color: #2c3e50;
+    color: #14324F;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -433,7 +458,7 @@ header h1 {
 .form-group select:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: #3498db;
+    border-color: #1C9FFF;
 }
 
 /* Detalhes do trecho */
@@ -449,7 +474,7 @@ header h1 {
 
 .detalhes-header h3 {
     font-size: 1.2rem;
-    color: #2c3e50;
+    color: #14324F;
 }
 
 .detalhes-header .info {
@@ -468,7 +493,7 @@ header h1 {
 }
 
 .detalhes-section h4 {
-    color: #2c3e50;
+    color: #14324F;
     margin-bottom: 10px;
     display: flex;
     align-items: center;
@@ -507,7 +532,7 @@ header h1 {
 }
 
 .item-list li .item-info strong {
-    color: #2c3e50;
+    color: #14324F;
 }
 
 .item-list li .item-info .obs {
@@ -530,13 +555,15 @@ header h1 {
     background: transparent;
     border: none;
     cursor: pointer;
-    padding: 4px 6px;
-    border-radius: 4px;
-    font-size: 0.9rem;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px;
+    border-radius: 10px;
+    font-size: 1rem;
 }
 
 .item-list li .item-actions .edit-btn {
-    color: #3498db;
+    color: #1C9FFF;
 }
 
 .item-list li .item-actions .delete-btn {
@@ -566,7 +593,7 @@ header h1 {
 .resumo-gastos .gasto-item .value {
     font-weight: 700;
     font-size: 1rem;
-    color: #2c3e50;
+    color: #14324F;
 }
 
 /* Ponto de ações */
@@ -619,7 +646,7 @@ header h1 {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    color: #2c3e50;
+    color: #14324F;
     font-size: 0.8rem;
     font-weight: 600;
 }
@@ -631,22 +658,24 @@ header h1 {
     padding: 4px 8px;
     background: #f8f9fa;
     border-radius: 4px;
-    border-left: 3px solid #3498db;
+    border-left: 3px solid #1C9FFF;
 }
 
 /* Botões inline */
 .btn-inline {
-    background: #3498db;
+    background: #1C9FFF;
     color: white;
     border: none;
-    padding: 4px 12px;
-    border-radius: 4px;
-    font-size: 0.8rem;
+    min-height: 44px;
+    padding: 8px 14px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 700;
     cursor: pointer;
 }
 
 .btn-inline:hover {
-    background: #2980b9;
+    background: #0B84E8;
 }
 
 /* Resumo da viagem */
@@ -667,7 +696,7 @@ header h1 {
 .resumo-viagem-stats .stat-item .stat-value {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #2c3e50;
+    color: #14324F;
 }
 
 .resumo-viagem-stats .stat-item .stat-label {
@@ -730,8 +759,8 @@ header h1 {
     }
 
     .filtro-btn {
-        font-size: 0.75rem;
-        padding: 4px 10px;
+        font-size: 0.8rem;
+        padding: 8px 12px;
     }
 
     .ponto-actions {
@@ -758,7 +787,7 @@ header h1 {
 
 /* Estilo para o ícone de calendário */
 .fa-calendar-alt {
-    color: #3498db;
+    color: #1C9FFF;
 }
 
 /* ===== ESTILOS DE AUTENTICAÇÃO ===== */
@@ -769,7 +798,7 @@ header h1 {
     align-items: center;
     min-height: 100vh;
     padding: 20px;
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    background: linear-gradient(165deg, #1C9FFF 0%, #E7F3FF 46%, #FFF6D6 100%);
 }
 
 .auth-card {
@@ -788,13 +817,13 @@ header h1 {
 
 .auth-icon {
     font-size: 3rem;
-    color: #3498db;
+    color: #1C9FFF;
     margin-bottom: 12px;
 }
 
 .auth-header h1 {
     font-size: 1.8rem;
-    color: #2c3e50;
+    color: #14324F;
     margin-bottom: 8px;
 }
 
@@ -840,7 +869,7 @@ header h1 {
 }
 
 .auth-links a {
-    color: #3498db;
+    color: #1C9FFF;
     text-decoration: none;
     font-weight: 600;
 }
@@ -866,12 +895,14 @@ header h1 {
 }
 
 .logout-btn {
-    background: rgba(255,255,255,0.1);
-    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.16);
+    border: 1px solid rgba(255,255,255,0.28);
     color: white;
-    padding: 4px 12px;
-    border-radius: 6px;
-    font-size: 0.8rem;
+    min-height: 44px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 700;
     cursor: pointer;
     transition: background 0.2s;
 }
@@ -893,4 +924,550 @@ header h1 {
     .auth-icon {
         font-size: 2.5rem;
     }
+}
+
+.header-brand,
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.header-brand {
+    min-width: 0;
+}
+
+.header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+header h1 {
+    font-size: 1.15rem;
+    margin: 0;
+    min-width: 0;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.brand-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    object-fit: cover;
+    background: white;
+    flex-shrink: 0;
+}
+
+.auth-logo {
+    width: 96px;
+    height: 96px;
+    border-radius: 24px;
+    object-fit: cover;
+    margin-bottom: 12px;
+}
+
+.user-info .user-name {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sync-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    background: rgba(255, 255, 255, 0.22);
+    color: white;
+    white-space: nowrap;
+}
+
+.sync-chip.offline {
+    background: #14324F;
+}
+
+.sync-chip.pending,
+.sync-chip.erro {
+    background: #F5C400;
+    color: #14324F;
+}
+
+.sync-chip.syncing {
+    background: white;
+    color: #0B84E8;
+}
+
+.card-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+
+.totais-viagem {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    background: white;
+    border-radius: 16px;
+    padding: 12px;
+    margin-bottom: 16px;
+    box-shadow: 0 8px 24px rgba(20, 50, 79, 0.08);
+    position: sticky;
+    top: 76px;
+    z-index: 40;
+}
+
+.total-item {
+    background: #F4F9FF;
+    border-radius: 12px;
+    padding: 10px 8px;
+    text-align: center;
+}
+
+.total-item strong {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.95rem;
+}
+
+.total-label,
+.totais-nota,
+.config-hint,
+.resumo-nota {
+    color: #5C7286;
+    font-size: 0.75rem;
+}
+
+.totais-nota,
+.resumo-nota {
+    grid-column: 1 / -1;
+    margin: 0;
+}
+
+.trechos-grid.timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+    padding-left: 28px;
+}
+
+.trechos-grid.timeline::before {
+    content: "";
+    position: absolute;
+    left: 10px;
+    top: 12px;
+    bottom: 12px;
+    width: 3px;
+    border-radius: 3px;
+    background: #1C9FFF;
+}
+
+.trechos-grid.timeline .card-trecho {
+    position: relative;
+    margin-bottom: 12px;
+}
+
+.trechos-grid.timeline .card-trecho::before {
+    content: "";
+    position: absolute;
+    left: -24px;
+    top: 22px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #F5C400;
+    border: 3px solid #1C9FFF;
+    box-sizing: border-box;
+}
+
+.tipo-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tipo-chip {
+    min-height: 44px;
+    border: 2px solid #D7E8F7;
+    background: white;
+    color: #14324F;
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.tipo-chip.active {
+    background: #1C9FFF;
+    border-color: #1C9FFF;
+    color: white;
+}
+
+.config-section + .config-section {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid #E4EEF8;
+}
+
+.config-section h3 {
+    margin-bottom: 10px;
+    font-size: 1rem;
+}
+
+.config-hint {
+    margin-bottom: 10px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    min-height: 44px;
+}
+
+#detalhesModal {
+    z-index: 1000;
+}
+
+#pontoModal,
+#despesaModal,
+#trechoModal,
+#viagemModal,
+#configModal,
+#resumoModal {
+    z-index: 1200;
+}
+
+.barras-gastos {
+    margin-top: 8px;
+}
+
+.barras-gastos h3 {
+    font-size: 1rem;
+    margin-bottom: 10px;
+}
+
+.barra-linha {
+    margin-bottom: 10px;
+}
+
+.barra-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+}
+
+.barra-trilho {
+    height: 8px;
+    background: #E4EEF8;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.barra-preenchimento {
+    height: 100%;
+    background: linear-gradient(90deg, #F5C400, #1C9FFF);
+    border-radius: 999px;
+}
+
+.stat-estimado {
+    background: #F4F9FF;
+}
+
+.stat-real {
+    background: #E5F8EE;
+}
+
+.stat-total {
+    background: #14324F;
+    color: white;
+}
+
+.stat-total .stat-value,
+.stat-total .stat-label {
+    color: white;
+}
+
+.install-banner {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    z-index: 1400;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 840px;
+    margin: 0 auto;
+    background: white;
+    color: #14324F;
+    border-radius: 16px;
+    padding: 10px 12px;
+    box-shadow: 0 12px 32px rgba(20, 50, 79, 0.2);
+}
+
+.install-banner img {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+}
+
+.install-banner span {
+    flex: 1;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.install-banner button {
+    min-height: 44px;
+    border: none;
+    border-radius: 12px;
+    padding: 8px 12px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+#btnInstalar {
+    background: #1C9FFF;
+    color: white;
+}
+
+#btnFecharInstall {
+    background: #F4F9FF;
+    color: #14324F;
+    min-width: 44px;
+}
+
+@media (max-width: 720px) {
+    .totais-viagem {
+        grid-template-columns: 1fr 1fr;
+        top: 68px;
+    }
+
+    .user-info .user-name {
+        display: none;
+    }
+}
+
+.badge-real {
+    background: #1E8F4E;
+    color: white;
+}
+
+.gasto-real,
+.gasto-total {
+    border-radius: 8px;
+    padding: 6px 4px;
+    color: white;
+}
+
+.gasto-real {
+    background: #1E8F4E;
+}
+
+.gasto-total {
+    background: #14324F;
+}
+
+.gasto-real .label,
+.gasto-real .value,
+.gasto-real .gasto-nota,
+.gasto-total .label,
+.gasto-total .value {
+    color: white;
+}
+
+.valor-estimado,
+.gasto-nota {
+    color: #7f8c8d;
+    font-size: 0.65rem;
+}
+
+html[data-theme="dark"] {
+    color-scheme: dark;
+}
+
+html[data-theme="dark"] body {
+    background: #071018;
+    color: #E8F2FB;
+}
+
+html[data-theme="dark"] header {
+    background: linear-gradient(135deg, #0E4F86 0%, #082C52 100%);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="dark"] .viagem-card,
+html[data-theme="dark"] .card-trecho,
+html[data-theme="dark"] .viagem-info,
+html[data-theme="dark"] .modal-content,
+html[data-theme="dark"] .auth-card,
+html[data-theme="dark"] .totais-viagem,
+html[data-theme="dark"] .install-banner {
+    background: #12202E;
+    color: #E8F2FB;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+
+html[data-theme="dark"] .viagem-card h3,
+html[data-theme="dark"] .card-trecho h3,
+html[data-theme="dark"] .viagem-info h2,
+html[data-theme="dark"] .modal-content h2,
+html[data-theme="dark"] .modal-content h3,
+html[data-theme="dark"] .detalhes-header h3,
+html[data-theme="dark"] .detalhes-section h4,
+html[data-theme="dark"] .auth-header h1,
+html[data-theme="dark"] .config-section h3,
+html[data-theme="dark"] .item-list li .item-info strong,
+html[data-theme="dark"] .ponto-actions .custo-info,
+html[data-theme="dark"] .resumo-gastos .gasto-item .value,
+html[data-theme="dark"] .resumo-viagem-stats .stat-item .stat-value,
+html[data-theme="dark"] .total-item strong,
+html[data-theme="dark"] .barra-meta,
+html[data-theme="dark"] .filtro-btn:hover {
+    color: #E8F2FB;
+}
+
+html[data-theme="dark"] .viagem-card .viagem-info,
+html[data-theme="dark"] .viagem-card .viagem-descricao,
+html[data-theme="dark"] .viagem-info .viagem-detalhes,
+html[data-theme="dark"] .viagem-info .viagem-descricao,
+html[data-theme="dark"] .card-trecho .datas,
+html[data-theme="dark"] .card-trecho .resumo,
+html[data-theme="dark"] .detalhes-header .info,
+html[data-theme="dark"] .detalhes-section .empty,
+html[data-theme="dark"] .item-list li .item-info .obs,
+html[data-theme="dark"] .item-list li .item-info .data-info,
+html[data-theme="dark"] .ponto-actions .data-info,
+html[data-theme="dark"] .resumo-gastos .gasto-item .label,
+html[data-theme="dark"] .resumo-viagem-stats .stat-item .stat-label,
+html[data-theme="dark"] .total-label,
+html[data-theme="dark"] .totais-nota,
+html[data-theme="dark"] .config-hint,
+html[data-theme="dark"] .resumo-nota,
+html[data-theme="dark"] .auth-header p,
+html[data-theme="dark"] .auth-links,
+html[data-theme="dark"] .valor-estimado,
+html[data-theme="dark"] .gasto-nota,
+html[data-theme="dark"] .modal-content .close,
+html[data-theme="dark"] .form-group label {
+    color: #8FA6BB;
+}
+
+html[data-theme="dark"] .viagem-card .viagem-resumo {
+    border-top-color: #24384C;
+}
+
+html[data-theme="dark"] .viagem-card .viagem-resumo .stat {
+    color: #C5D4E2;
+}
+
+html[data-theme="dark"] .filtro-btn,
+html[data-theme="dark"] .tipo-chip,
+html[data-theme="dark"] .total-item,
+html[data-theme="dark"] .item-list li,
+html[data-theme="dark"] .resumo-gastos,
+html[data-theme="dark"] .resumo-viagem-stats .stat-item,
+html[data-theme="dark"] .stat-estimado,
+html[data-theme="dark"] .card-trecho .badge,
+html[data-theme="dark"] .ponto-actions .no-maps,
+html[data-theme="dark"] .item-info .obs {
+    background: #1A2C3E;
+    color: #C5D4E2;
+    border-color: #2C455C;
+}
+
+html[data-theme="dark"] .secondary-btn {
+    background: #3A3114;
+    color: #FFE58A;
+}
+
+html[data-theme="dark"] .secondary-btn:hover {
+    background: #4A3F18;
+}
+
+html[data-theme="dark"] .form-group input,
+html[data-theme="dark"] .form-group select,
+html[data-theme="dark"] .form-group textarea {
+    background: #0E1A26;
+    color: #E8F2FB;
+    border-color: #2C455C;
+}
+
+html[data-theme="dark"] .config-section + .config-section,
+html[data-theme="dark"] .detalhes-header {
+    border-color: #24384C;
+}
+
+html[data-theme="dark"] .auth-container {
+    background: linear-gradient(165deg, #062033 0%, #071018 55%, #12180A 100%);
+}
+
+html[data-theme="dark"] .auth-error,
+html[data-theme="dark"] #loginError,
+html[data-theme="dark"] #signupError {
+    background: #3A1A1E;
+    color: #FFB4B4;
+}
+
+html[data-theme="dark"] .auth-success {
+    background: #143226;
+    color: #B6F0CF;
+}
+
+html[data-theme="dark"] .auth-links a,
+html[data-theme="dark"] .toggle-password {
+    color: #7EC8FF;
+}
+
+html[data-theme="dark"] .barra-trilho {
+    background: #24384C;
+}
+
+html[data-theme="dark"] .stat-real {
+    background: #143226;
+}
+
+html[data-theme="dark"] .stat-total {
+    background: #1C9FFF;
+}
+
+html[data-theme="dark"] .gasto-total {
+    background: #1C9FFF;
+}
+
+html[data-theme="dark"] #btnFecharInstall {
+    background: #1A2C3E;
+    color: #E8F2FB;
+}
+
+html[data-theme="dark"] .filtro-btn.active,
+html[data-theme="dark"] .tipo-chip.active {
+    background: #1C9FFF;
+    border-color: #1C9FFF;
+    color: white;
+}
+
+html[data-theme="dark"] .resumo-viagem-stats .stat-item.stat-real {
+    background: #143226;
+}
+
+html[data-theme="dark"] .resumo-viagem-stats .stat-item.stat-total {
+    background: #1C9FFF;
+}
+
+html[data-theme="dark"] .resumo-viagem-stats .stat-item.stat-total .stat-value,
+html[data-theme="dark"] .resumo-viagem-stats .stat-item.stat-total .stat-label {
+    color: white;
 }
