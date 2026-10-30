@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
-    <meta name="theme-color" content="#1C9FFF" />
+    <meta name="theme-color" content="#3A6A84" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -26,30 +26,42 @@
             </div>
             <div class="header-actions">
                 <span id="syncStatus" class="sync-chip" role="status">Sincronizado</span>
-                <button id="btnConfig" class="icon-btn" type="button" aria-label="Configurações"><i class="fas fa-cog"></i></button>
                 <div class="user-info" id="userInfo"></div>
             </div>
         </header>
 
         <!-- Tela Principal -->
         <main id="mainScreen">
-            <div class="toolbar">
-                <button id="btnNovaViagem" class="primary-btn"><i class="fas fa-plus"></i> Nova Viagem</button>
-                <button id="btnSync" class="secondary-btn"><i class="fas fa-sync"></i> Sincronizar</button>
-            </div>
-            
-            <!-- Filtros -->
             <div class="filtros">
                 <button class="filtro-btn active" data-filtro="todas">Todas</button>
-                <button class="filtro-btn" data-filtro="planejado">📅 Planejadas</button>
-                <button class="filtro-btn" data-filtro="em-andamento">🔄 Em Andamento</button>
-                <button class="filtro-btn" data-filtro="finalizado">✅ Finalizadas</button>
+                <button class="filtro-btn" data-filtro="planejado">Planejadas</button>
+                <button class="filtro-btn" data-filtro="em-andamento">Em andamento</button>
+                <button class="filtro-btn" data-filtro="finalizado">Finalizadas</button>
             </div>
 
             <div id="viagensContainer">
                 <!-- Viagens serão injetadas aqui -->
             </div>
         </main>
+
+        <nav class="tabbar" aria-label="Menu principal">
+            <button type="button" class="tab-item active" id="tabViagens">
+                <i class="fas fa-suitcase"></i>
+                <span>Viagens</span>
+            </button>
+            <button type="button" class="tab-item" id="btnNovaViagem">
+                <i class="fas fa-plus"></i>
+                <span>Nova</span>
+            </button>
+            <button type="button" class="tab-item" id="btnSync">
+                <i class="fas fa-sync"></i>
+                <span>Sync</span>
+            </button>
+            <button type="button" class="tab-item" id="btnConfig">
+                <i class="fas fa-cog"></i>
+                <span>Ajustes</span>
+            </button>
+        </nav>
 
         <!-- Modal de Configuração -->
         <div id="configModal" class="modal">

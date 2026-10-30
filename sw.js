@@ -1,4 +1,4 @@
-const CACHE = 'buscuz-shell-v2';
+const CACHE = 'buscuz-shell-v5';
 
 const APP_SHELL = [
     './',

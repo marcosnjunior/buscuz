@@ -7,15 +7,18 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #E7F3FF;
-    color: #14324F;
-    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    background: #F4F6F7;
+    color: #243240;
 }
 
 #app {
     max-width: 840px;
     margin: 0 auto;
-    padding: 0 12px 24px;
+    padding: 0 12px 16px;
+}
+
+#app:has(.tabbar) {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
 }
 
 /* Cabeçalho */
@@ -23,13 +26,11 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 12px;
-    background: linear-gradient(135deg, #1C9FFF 0%, #0B84E8 100%);
+    gap: 8px;
+    background: #3A6A84;
     color: white;
-    padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
-    border-radius: 0 0 18px 18px;
-    margin: 0 -12px 16px;
-    box-shadow: 0 8px 24px rgba(28, 159, 255, 0.28);
+    padding: calc(6px + env(safe-area-inset-top)) 8px 6px 12px;
+    margin: 0 -12px 10px;
     position: sticky;
     top: 0;
     z-index: 80;
@@ -68,7 +69,7 @@ header h1 {
 }
 
 .primary-btn {
-    background: #1C9FFF;
+    background: #3D6E88;
     color: white;
     border: none;
     min-height: 44px;
@@ -85,7 +86,7 @@ header h1 {
 }
 
 .primary-btn:hover {
-    background: #0B84E8;
+    background: #325C74;
 }
 
 .secondary-btn {
@@ -134,31 +135,34 @@ header h1 {
 .filtros {
     display: flex;
     gap: 8px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
+    margin-bottom: 12px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
 }
 
 .filtro-btn {
     background: white;
-    border: 2px solid #D7E8F7;
-    min-height: 44px;
-    padding: 8px 14px;
+    border: 1px solid #D5E0E6;
+    min-height: 40px;
+    padding: 6px 12px;
     border-radius: 999px;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
     color: #5C7286;
+    flex: 0 0 auto;
 }
 
 .filtro-btn:hover {
-    border-color: #1C9FFF;
+    border-color: #3D6E88;
     color: #14324F;
 }
 
 .filtro-btn.active {
-    background: #1C9FFF;
-    border-color: #1C9FFF;
+    background: #3D6E88;
+    border-color: #3D6E88;
     color: white;
 }
 
@@ -204,7 +208,7 @@ header h1 {
 }
 
 .viagem-card .viagem-info i {
-    color: #1C9FFF;
+    color: #3D6E88;
 }
 
 .viagem-card .viagem-resumo {
@@ -225,7 +229,7 @@ header h1 {
 }
 
 .viagem-card .viagem-resumo .stat i {
-    color: #1C9FFF;
+    color: #3D6E88;
 }
 
 .viagem-card .viagem-descricao {
@@ -280,11 +284,11 @@ header h1 {
 .card-trecho {
     background: white;
     border-radius: 12px;
-    padding: 16px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    padding: 12px 14px;
+    box-shadow: 0 1px 4px rgba(20, 40, 50, 0.06);
     cursor: pointer;
     transition: transform 0.15s, box-shadow 0.15s;
-    border-left: 4px solid #F5C400;
+    border-left: 4px solid #E6B325;
 }
 
 .card-trecho:hover {
@@ -293,9 +297,9 @@ header h1 {
 }
 
 .card-trecho h3 {
-    font-size: 1.1rem;
-    color: #14324F;
-    margin-bottom: 6px;
+    font-size: 1rem;
+    color: #243240;
+    margin-bottom: 2px;
 }
 
 .card-trecho .cidades {
@@ -305,9 +309,9 @@ header h1 {
 }
 
 .card-trecho .datas {
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     color: #7f8c8d;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -315,16 +319,16 @@ header h1 {
 }
 
 .card-trecho .datas i {
-    color: #1C9FFF;
+    color: #3D6E88;
 }
 
 .card-trecho .resumo {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4px 12px;
-    font-size: 0.85rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 12px;
+    font-size: 0.8rem;
     color: #555;
-    margin-top: 8px;
+    margin-top: 2px;
 }
 
 .card-trecho .resumo span {
@@ -334,7 +338,7 @@ header h1 {
 }
 
 .card-trecho .resumo i {
-    color: #1C9FFF;
+    color: #3D6E88;
     width: 18px;
 }
 
@@ -368,7 +372,7 @@ header h1 {
 }
 
 .status-badge.finalizado {
-    background: #1C9FFF;
+    background: #3D6E88;
     color: white;
 }
 
@@ -458,7 +462,7 @@ header h1 {
 .form-group select:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: #1C9FFF;
+    border-color: #3D6E88;
 }
 
 /* Detalhes do trecho */
@@ -563,7 +567,7 @@ header h1 {
 }
 
 .item-list li .item-actions .edit-btn {
-    color: #1C9FFF;
+    color: #3D6E88;
 }
 
 .item-list li .item-actions .delete-btn {
@@ -658,12 +662,12 @@ header h1 {
     padding: 4px 8px;
     background: #f8f9fa;
     border-radius: 4px;
-    border-left: 3px solid #1C9FFF;
+    border-left: 3px solid #3D6E88;
 }
 
 /* Botões inline */
 .btn-inline {
-    background: #1C9FFF;
+    background: #3D6E88;
     color: white;
     border: none;
     min-height: 44px;
@@ -675,7 +679,7 @@ header h1 {
 }
 
 .btn-inline:hover {
-    background: #0B84E8;
+    background: #325C74;
 }
 
 /* Resumo da viagem */
@@ -787,7 +791,7 @@ header h1 {
 
 /* Estilo para o ícone de calendário */
 .fa-calendar-alt {
-    color: #1C9FFF;
+    color: #3D6E88;
 }
 
 /* ===== ESTILOS DE AUTENTICAÇÃO ===== */
@@ -798,7 +802,7 @@ header h1 {
     align-items: center;
     min-height: 100vh;
     padding: 20px;
-    background: linear-gradient(165deg, #1C9FFF 0%, #E7F3FF 46%, #FFF6D6 100%);
+    background: linear-gradient(165deg, #3D6E88 0%, #F4F6F7 46%, #FFF6D6 100%);
 }
 
 .auth-card {
@@ -817,7 +821,7 @@ header h1 {
 
 .auth-icon {
     font-size: 3rem;
-    color: #1C9FFF;
+    color: #3D6E88;
     margin-bottom: 12px;
 }
 
@@ -869,7 +873,7 @@ header h1 {
 }
 
 .auth-links a {
-    color: #1C9FFF;
+    color: #3D6E88;
     text-decoration: none;
     font-weight: 600;
 }
@@ -953,9 +957,9 @@ header h1 {
 }
 
 .brand-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
     object-fit: cover;
     background: white;
     flex-shrink: 0;
@@ -1002,7 +1006,7 @@ header h1 {
 
 .sync-chip.syncing {
     background: white;
-    color: #0B84E8;
+    color: #325C74;
 }
 
 .card-actions {
@@ -1013,21 +1017,37 @@ header h1 {
 }
 
 .totais-viagem {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
     background: white;
-    border-radius: 16px;
-    padding: 12px;
-    margin-bottom: 16px;
-    box-shadow: 0 8px 24px rgba(20, 50, 79, 0.08);
-    position: sticky;
-    top: 76px;
-    z-index: 40;
+    border-radius: 12px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 4px rgba(20, 40, 50, 0.06);
+}
+
+.total-principal {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex: 0 0 auto;
+}
+
+.total-principal strong {
+    font-size: 1rem;
+}
+
+.total-mini {
+    flex: 0 0 auto;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #5C7286;
 }
 
 .total-item {
-    background: #F4F9FF;
+    background: #F4F7F8;
     border-radius: 12px;
     padding: 10px 8px;
     text-align: center;
@@ -1069,7 +1089,7 @@ header h1 {
     bottom: 12px;
     width: 3px;
     border-radius: 3px;
-    background: #1C9FFF;
+    background: #3D6E88;
 }
 
 .trechos-grid.timeline .card-trecho {
@@ -1086,7 +1106,7 @@ header h1 {
     height: 14px;
     border-radius: 50%;
     background: #F5C400;
-    border: 3px solid #1C9FFF;
+    border: 3px solid #3D6E88;
     box-sizing: border-box;
 }
 
@@ -1108,8 +1128,8 @@ header h1 {
 }
 
 .tipo-chip.active {
-    background: #1C9FFF;
-    border-color: #1C9FFF;
+    background: #3D6E88;
+    border-color: #3D6E88;
     color: white;
 }
 
@@ -1177,7 +1197,7 @@ header h1 {
 
 .barra-preenchimento {
     height: 100%;
-    background: linear-gradient(90deg, #F5C400, #1C9FFF);
+    background: linear-gradient(90deg, #F5C400, #3D6E88);
     border-radius: 999px;
 }
 
@@ -1239,7 +1259,7 @@ header h1 {
 }
 
 #btnInstalar {
-    background: #1C9FFF;
+    background: #3D6E88;
     color: white;
 }
 
@@ -1250,14 +1270,55 @@ header h1 {
 }
 
 @media (max-width: 720px) {
-    .totais-viagem {
-        grid-template-columns: 1fr 1fr;
-        top: 68px;
-    }
-
     .user-info .user-name {
         display: none;
     }
+}
+
+.tabbar {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(840px, 100%);
+    bottom: 0;
+    z-index: 90;
+    display: flex;
+    justify-content: space-around;
+    gap: 2px;
+    background: white;
+    border-top: 1px solid #E2E8EC;
+    padding: 4px 6px calc(4px + env(safe-area-inset-bottom));
+}
+
+.tab-item {
+    flex: 1;
+    max-width: 140px;
+    border: none;
+    background: transparent;
+    color: #6A7C8A;
+    min-height: 52px;
+    padding: 4px 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 12px;
+}
+
+.tab-item i {
+    font-size: 1.15rem;
+}
+
+.tab-item.active {
+    color: #3D6E88;
+}
+
+.tab-item:active {
+    background: #F3F7F9;
 }
 
 .badge-real {
@@ -1304,8 +1365,8 @@ html[data-theme="dark"] body {
 }
 
 html[data-theme="dark"] header {
-    background: linear-gradient(135deg, #0E4F86 0%, #082C52 100%);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    background: #1A3142;
+    box-shadow: none;
 }
 
 html[data-theme="dark"] .viagem-card,
@@ -1440,11 +1501,11 @@ html[data-theme="dark"] .stat-real {
 }
 
 html[data-theme="dark"] .stat-total {
-    background: #1C9FFF;
+    background: #3D6E88;
 }
 
 html[data-theme="dark"] .gasto-total {
-    background: #1C9FFF;
+    background: #3D6E88;
 }
 
 html[data-theme="dark"] #btnFecharInstall {
@@ -1454,8 +1515,8 @@ html[data-theme="dark"] #btnFecharInstall {
 
 html[data-theme="dark"] .filtro-btn.active,
 html[data-theme="dark"] .tipo-chip.active {
-    background: #1C9FFF;
-    border-color: #1C9FFF;
+    background: #3D6E88;
+    border-color: #3D6E88;
     color: white;
 }
 
@@ -1464,10 +1525,35 @@ html[data-theme="dark"] .resumo-viagem-stats .stat-item.stat-real {
 }
 
 html[data-theme="dark"] .resumo-viagem-stats .stat-item.stat-total {
-    background: #1C9FFF;
+    background: #3D6E88;
 }
 
 html[data-theme="dark"] .resumo-viagem-stats .stat-item.stat-total .stat-value,
 html[data-theme="dark"] .resumo-viagem-stats .stat-item.stat-total .stat-label {
     color: white;
+}
+
+html[data-theme="dark"] .tabbar {
+    background: #12202E;
+    border-top-color: #2C455C;
+}
+
+html[data-theme="dark"] .tab-item {
+    color: #8FA6BB;
+}
+
+html[data-theme="dark"] .tab-item.active {
+    color: #D5E6F0;
+}
+
+html[data-theme="dark"] .tab-item:active {
+    background: #1A2C3E;
+}
+
+html[data-theme="dark"] .total-mini {
+    color: #8FA6BB;
+}
+
+body:has(.tabbar) .install-banner {
+    bottom: calc(76px + env(safe-area-inset-bottom));
 }

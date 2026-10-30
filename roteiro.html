@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
-    <meta name="theme-color" content="#1C9FFF" />
+    <meta name="theme-color" content="#3A6A84" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -24,34 +24,35 @@
             <h1 id="headerTitle">Roteiro</h1>
             <div class="header-actions">
                 <span id="syncStatus" class="sync-chip" role="status">Sincronizado</span>
-                <button id="btnSyncRoteiro" class="icon-btn" type="button" aria-label="Sincronizar"><i class="fas fa-sync"></i></button>
-                <button id="btnConfigRoteiro" class="icon-btn" type="button" aria-label="Configurações"><i class="fas fa-cog"></i></button>
             </div>
         </header>
 
-        <!-- Informações da Viagem -->
-        <div id="viagemInfo" class="viagem-info">
-            <h2 id="viagemNome"></h2>
-            <div class="viagem-detalhes">
-                <span><i class="fas fa-map-pin"></i> <span id="viagemDestino"></span></span>
-                <span><i class="fas fa-calendar-alt"></i> <span id="viagemPeriodo"></span></span>
-                <span class="status-badge" id="viagemStatus"></span>
-            </div>
-            <p id="viagemDescricao" class="viagem-descricao"></p>
-        </div>
-
         <div id="totaisViagem" class="totais-viagem" aria-live="polite"></div>
 
-        <!-- Tela Principal -->
         <main id="mainScreen">
-            <div class="toolbar">
-                <button id="btnNovoTrecho" class="primary-btn"><i class="fas fa-plus"></i> Novo Trecho</button>
-                <button id="btnResumoViagem" class="secondary-btn"><i class="fas fa-chart-pie"></i> Resumo</button>
-            </div>
             <div id="trechosContainer" class="trechos-grid">
                 <!-- Cards serão injetados aqui -->
             </div>
         </main>
+
+        <nav class="tabbar" aria-label="Menu do roteiro">
+            <button type="button" class="tab-item" id="btnNovoTrecho">
+                <i class="fas fa-plus"></i>
+                <span>Trecho</span>
+            </button>
+            <button type="button" class="tab-item" id="btnResumoViagem">
+                <i class="fas fa-chart-pie"></i>
+                <span>Resumo</span>
+            </button>
+            <button type="button" class="tab-item" id="btnSyncRoteiro">
+                <i class="fas fa-sync"></i>
+                <span>Sync</span>
+            </button>
+            <button type="button" class="tab-item" id="btnConfigRoteiro">
+                <i class="fas fa-cog"></i>
+                <span>Ajustes</span>
+            </button>
+        </nav>
 
         <!-- Modal de Configuração -->
         <div id="configModal" class="modal">

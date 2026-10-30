@@ -300,27 +300,14 @@ function renderizarTotaisViagem(viagem) {
     if (!el || !viagem) return;
     const totais = totaisDaViagem(viagem);
     el.innerHTML = `
-        <div class="total-item">
-            <span class="total-label">Gasto real</span>
+        <div class="total-principal">
+            <span class="total-label">Gasto</span>
             <strong>${formatarMoeda(totais.gastoReal)}</strong>
         </div>
-        <div class="total-item">
-            <span class="total-label">Combustível estimado</span>
-            <strong>${formatarMoeda(totais.combustivelEstimado)}</strong>
-        </div>
-        <div class="total-item">
-            <span class="total-label">Combustível real</span>
-            <strong>${formatarMoeda(totais.combustivelReal)}</strong>
-        </div>
-        <div class="total-item">
-            <span class="total-label">Distância</span>
-            <strong>${totais.km.toFixed(1)} km</strong>
-        </div>
-        <div class="total-item">
-            <span class="total-label">Custo por km</span>
-            <strong>${totais.km > 0 ? formatarMoeda(totais.porKm) : '—'}</strong>
-        </div>
-        <p class="totais-nota">O combustível estimado não entra no gasto real. O combustível real soma os abastecimentos.</p>
+        <span class="total-mini">${totais.km.toFixed(0)} km</span>
+        <span class="total-mini">${totais.km > 0 ? formatarMoeda(totais.porKm) + '/km' : '—'}</span>
+        <span class="total-mini">comb. ${formatarMoeda(totais.combustivelReal)}</span>
+        <span class="total-mini">est. ${formatarMoeda(totais.combustivelEstimado)}</span>
     `;
 }
 
@@ -1135,19 +1122,6 @@ function renderizarTrechos() {
     }
 
     document.getElementById('headerTitle').textContent = viagem.nome;
-    document.getElementById('viagemNome').textContent = viagem.nome;
-    document.getElementById('viagemDestino').textContent = viagem.destino || 'Destino não definido';
-    document.getElementById('viagemPeriodo').textContent = `${formatarData(viagem.dataInicio)} até ${formatarData(viagem.dataFim)}`;
-    document.getElementById('viagemDescricao').textContent = viagem.descricao || '';
-
-    const status = getStatusViagem(viagem.dataInicio, viagem.dataFim);
-    const statusLabels = {
-        'planejado': '📅 Planejada',
-        'em-andamento': '🔄 Em andamento',
-        'finalizado': '✅ Finalizada'
-    };
-    document.getElementById('viagemStatus').textContent = statusLabels[status];
-    document.getElementById('viagemStatus').className = `status-badge ${status}`;
     renderizarTotaisViagem(viagem);
 
     if (!viagem.trechos || !viagem.trechos.length) {
@@ -1156,7 +1130,7 @@ function renderizarTrechos() {
             <div class="empty-state" style="grid-column:1/-1; text-align:center; padding:40px 20px; color:#999;">
                 <i class="fas fa-road" style="font-size:2.5rem; display:block; margin-bottom:12px;"></i>
                 <p>Nenhum trecho cadastrado nesta viagem.</p>
-                <p style="font-size:0.9rem;">Clique em "Novo Trecho" para começar.</p>
+                <p style="font-size:0.9rem;">Use Trecho na barra de baixo para começar.</p>
             </div>
         `;
         return;
@@ -1168,48 +1142,22 @@ function renderizarTrechos() {
     container.classList.add('timeline');
 
     container.innerHTML = trechosOrdenados.map(trecho => {
-        const totalPontos = trecho.pontos ? trecho.pontos.length : 0;
         const totalDespesas = trecho.despesas ? trecho.despesas.length : 0;
         const totalGastos = calcularTotalGastos(trecho);
-        const combustivelEstimado = calcularCombustivelEstimadoValor(trecho);
-        const combustivelReal = calcularCombustivelReal(trecho);
-        const status = getStatusTrecho(trecho.dataCheckin, trecho.dataCheckout);
         const dias = calcularDias(trecho.dataCheckin, trecho.dataCheckout);
-
-        const statusLabels = {
-            'planejado': '📅 Planejado',
-            'em-andamento': '🔄 Em andamento',
-            'finalizado': '✅ Finalizado'
-        };
-
-        const consumo = dados.config.consumoMedio || 10;
-        const litrosEstimados = calcularCombustivelEstimado(trecho.distancia, consumo);
 
         return `
             <div class="card-trecho" data-id="${trecho.id}">
-                <h3><i class="fas fa-arrow-right"></i> ${trecho.cidadeAtual} → ${trecho.proximaCidade}</h3>
-                <!--<div class="cidades">
-                    <i class="fas fa-map-pin"></i> ${trecho.cidadeAtual} → ${trecho.proximaCidade}
-                </div>-->
+                <h3>${trecho.cidadeAtual} → ${trecho.proximaCidade}</h3>
                 <div class="datas">
-                    <i class="fas fa-calendar-alt"></i>
                     ${formatarData(trecho.dataCheckin)} até ${formatarData(trecho.dataCheckout)}
-                    <!--<span class="status-badge ${status}">${statusLabels[status]}</span>-->
-                    ${dias > 0 ? `<span style="color:#3498db;">(${dias} dias)</span>` : ''}
+                    ${dias > 0 ? `<span>(${dias} dias)</span>` : ''}
                 </div>
                 <div class="resumo">
-                    <span><i class="fas fa-route"></i> ${trecho.distancia} km</span>
-                    <span><i class="fas fa-clock"></i> ${trecho.tempoEstimado}h</span>
-                    <span><i class="fas fa-map-marker-alt"></i> ${totalPontos} pontos</span>
-                    <span><i class="fas fa-gas-pump"></i> ${formatarMoeda(combustivelEstimado)}</span>
-                </div>
-                <div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">
-                    <span class="badge"><i class="fas fa-receipt"></i> ${totalDespesas} despesas</span>
-                    <span class="badge"><i class="fas fa-coins"></i> ${formatarMoeda(totalGastos)}</span>
-                    ${combustivelReal > 0 ? `<span class="badge badge-real"><i class="fas fa-gas-pump"></i> Real: ${formatarMoeda(combustivelReal)}</span>` : ''}
-                </div>
-                <div style="font-size:0.7rem; color:#999; margin-top:4px;">
-                    <i class="fas fa-info-circle"></i> Combustível estimado (${litrosEstimados.toFixed(1)}L) - Não incluso no total
+                    <span>${trecho.distancia} km</span>
+                    <span>${trecho.tempoEstimado}h</span>
+                    <span>${totalDespesas} desp.</span>
+                    <span>${formatarMoeda(totalGastos)}</span>
                 </div>
             </div>
         `;
@@ -2121,11 +2069,11 @@ async function initApp() {
 function atualizarInfoUsuario(user) {
     const userInfo = document.getElementById('userInfo');
     if (userInfo) {
-        const name = user.user_metadata?.name || user.email;
+        const name = user.user_metadata?.name || user.email || 'Sair';
+        const titulo = String(name).replace(/"/g, '');
         userInfo.innerHTML = `
-            <span class="user-name"><i class="fas fa-user-circle"></i> ${name}</span>
-            <button class="logout-btn" onclick="handleLogout()">
-                <i class="fas fa-sign-out-alt"></i> Sair
+            <button class="icon-btn" type="button" onclick="handleLogout()" aria-label="Sair" title="${titulo}">
+                <i class="fas fa-sign-out-alt"></i>
             </button>
         `;
     }

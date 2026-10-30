@@ -17,7 +17,7 @@
         var escuro = escuroAtivo(salvo);
         document.documentElement.setAttribute('data-theme', escuro ? 'dark' : 'light');
         var meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute('content', escuro ? '#071018' : '#1C9FFF');
+        if (meta) meta.setAttribute('content', escuro ? '#071018' : '#3A6A84');
     }
 
     aplicar(preferido());
