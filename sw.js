@@ -1,4 +1,5 @@
-const CACHE = 'buscuz-shell-v5';
+const CACHE = 'buscuz-shell-v6';
+const ESPERA_REDE_MS = 4000;
 
 const APP_SHELL = [
     './',
@@ -14,7 +15,9 @@ const APP_SHELL = [
     './auth.js',
     './pwa.js',
     './manifest.json',
+    './manifest.json?v=6',
     './imagens/icone.png',
+    './imagens/icone.png?v=6',
     './imagens/logo.jpg',
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css'
@@ -25,7 +28,10 @@ self.addEventListener('install', (event) => {
         const cache = await caches.open(CACHE);
         await Promise.all(APP_SHELL.map(async (url) => {
             try {
-                await cache.add(url);
+                const response = await fetch(url, { cache: 'reload' });
+                if (response && (response.ok || response.type === 'opaque')) {
+                    await cache.put(url, response);
+                }
             } catch (error) {
                 console.warn('Cache ignorou', url, error);
             }
@@ -63,25 +69,41 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(responderDoCache(request, url));
 });
 
+function respostaUtil(response) {
+    return !!(response && (response.ok || response.type === 'opaque'));
+}
+
+async function guardar(cache, request, response) {
+    if (!respostaUtil(response)) return;
+    try {
+        await cache.put(request, response.clone());
+    } catch (error) {
+        // Respostas redirecionadas não podem ir para o cache.
+    }
+}
+
 async function responderDoCache(request, url) {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(request);
-    const atualizacao = fetch(request).then(async (response) => {
-        if (response && response.ok) {
-            await cache.put(request, response.clone());
-        }
+
+    const rede = fetch(request).then(async (response) => {
+        await guardar(cache, request, response);
         return response;
     }).catch(() => null);
 
     if (cached) {
-        atualizacao.catch(() => {});
+        const fresca = await Promise.race([
+            rede,
+            new Promise((resolve) => setTimeout(() => resolve(null), ESPERA_REDE_MS))
+        ]);
+        if (respostaUtil(fresca)) return fresca;
         return cached;
     }
 
-    const response = await atualizacao;
-    if (response) return response;
+    const resposta = await rede;
+    if (respostaUtil(resposta)) return resposta;
 
-    if (request.mode === 'navigate' && (url.pathname.endsWith('/') || url.pathname.endsWith('/index.html'))) {
+    if (request.mode === 'navigate') {
         const index = await cache.match('./index.html');
         if (index) return index;
     }
